@@ -1,0 +1,16 @@
+package com.reggie.reg.service;
+
+import com.reggie.reg.entity.Assignment;
+import com.baomidou.mybatisplus.extension.service.IService;
+
+/**
+ * <p>
+ * 作业表 服务类
+ * </p>
+ *
+ * @author lihy
+ * @since 2026-04-08
+ */
+public interface IAssignmentService extends IService<Assignment> {
+
+}
