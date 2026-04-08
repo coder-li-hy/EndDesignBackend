@@ -1,5 +1,6 @@
 package com.reggie.reg.service;
 
+import com.reggie.reg.dto.CourseDTO;
 import com.reggie.reg.entity.CourseInfo;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -13,4 +14,5 @@ import com.baomidou.mybatisplus.extension.service.IService;
  */
 public interface ICourseInfoService extends IService<CourseInfo> {
 
+//    CourseInfo createCourse(Integer userId, CourseDTO dto);
 }

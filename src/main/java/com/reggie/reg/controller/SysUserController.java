@@ -2,7 +2,9 @@ package com.reggie.reg.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.reggie.reg.common.R;
+import com.reggie.reg.dto.CourseDTO;
 import com.reggie.reg.dto.SysUserDto;
+import com.reggie.reg.entity.CourseInfo;
 import com.reggie.reg.entity.SysUser;
 import com.reggie.reg.service.ISysUserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,7 +36,10 @@ public class SysUserController {
                 log.info("登陆失败 用户名或密码错误");
                 return R.error("NOT_LOGIN");
             } else {
+                // 存一份当前登录用户的Id
                 request.getSession().setAttribute("sys_user", sys.getUserId());
+                // 存一份当前登录用户的角色
+                request.getSession().setAttribute("sys_user_role", sys.getRole());
                 return R.success(sys);
             }
         } else {
@@ -48,6 +53,7 @@ public class SysUserController {
         Integer id = (Integer)request.getSession().getAttribute("sys_user");
         log.info("当前登录用户id为：{}", id);
         SysUser sysUser = (SysUser)this.sysUserService.getById(id);
+        // 清空密码不传给前端
         sysUser.setPasswordHash((String)null);
         return R.success(sysUser);
     }
@@ -105,6 +111,8 @@ public class SysUserController {
         }
         return R.success("退出成功");
     }
+
+
     public SysUserController(final ISysUserService sysUserService) {
         this.sysUserService = sysUserService;
     }
