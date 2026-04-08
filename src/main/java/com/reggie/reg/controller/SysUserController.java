@@ -63,6 +63,8 @@ public class SysUserController {
             String newPassword = DigestUtils.md5DigestAsHex(sysUserDto.getNewpassword().getBytes());
             sysUser.setPasswordHash(newPassword);
             this.sysUserService.updateById(sysUser);
+            // 清空当前sesion
+            request.getSession().invalidate();
             return R.success("密码修改成功");
         }
     }
