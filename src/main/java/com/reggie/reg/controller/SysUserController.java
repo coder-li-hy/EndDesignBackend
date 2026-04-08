@@ -6,6 +6,7 @@ import com.reggie.reg.dto.SysUserDto;
 import com.reggie.reg.entity.SysUser;
 import com.reggie.reg.service.ISysUserService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.DigestUtils;
@@ -92,6 +93,17 @@ public class SysUserController {
 
         sysUserService.updateById(sysUser);
         return R.success("信息更新成功");
+    }
+
+    // 后端：/auth/logout
+    @PostMapping("/auth/logout")
+    public R<String> logout(HttpServletRequest request) {
+        // 销毁 Session（关键！否则别人拿到 Cookie 还能用）
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            session.invalidate();
+        }
+        return R.success("退出成功");
     }
     public SysUserController(final ISysUserService sysUserService) {
         this.sysUserService = sysUserService;
