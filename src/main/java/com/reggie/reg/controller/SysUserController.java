@@ -67,6 +67,30 @@ public class SysUserController {
         }
     }
 
+    @PutMapping("/auth/profile")
+    public R<String> updateProfile(HttpServletRequest request, @RequestBody SysUserDto dto) {
+        Integer id = (Integer) request.getSession().getAttribute("sys_user");
+        if (id == null) {
+            return R.error("未登录");
+        }
+
+        SysUser sysUser = sysUserService.getById(id);
+        if (sysUser == null) {
+            return R.error("用户不存在");
+        }
+
+        // 只更新允许修改的字段
+        if (dto.getEmail() != null) {
+            sysUser.setEmail(dto.getEmail());
+        }
+
+        if (dto.getPhone() != null) {
+            sysUser.setPhone(dto.getPhone());
+        }
+
+        sysUserService.updateById(sysUser);
+        return R.success("信息更新成功");
+    }
     public SysUserController(final ISysUserService sysUserService) {
         this.sysUserService = sysUserService;
     }
