@@ -1,6 +1,7 @@
 package com.reggie.reg.controller;
 
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.reggie.reg.common.R;
 import com.reggie.reg.dto.CourseDTO;
 import com.reggie.reg.entity.CourseInfo;
@@ -9,11 +10,9 @@ import com.reggie.reg.service.impl.CourseInfoServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
-import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 /**
  * <p>
@@ -64,6 +63,44 @@ public class CourseInfoController {
         }else {
             return R.error("创建课程失败");
         }
+    }
+
+    /**
+     * 模糊查询课程列表（不分页）
+     * GET /courses?courseName=数据库
+     */
+    @GetMapping("/courses")
+    public R<List<CourseInfo>> listCourses(@RequestParam(required = false) String courseName) {
+        List<CourseInfo> list = courseInfoService.listByCourseName(courseName);
+        return R.success(list);
+    }
+
+    /**
+     * 模糊查询 + 分页
+     * GET /courses/page?courseName=数据库&page=1&size=10
+     */
+    @GetMapping("/course/page")
+    public R<Page<CourseInfo>> pageCourses(
+            @RequestParam(required = false) String courseName,
+            @RequestParam(defaultValue = "1") long page,
+            @RequestParam(defaultValue = "10") long size) {
+
+        Page<CourseInfo> result = courseInfoService.pageByCourseName(courseName, page, size);
+        return R.success(result);
+    }
+
+    /**
+     * 多条件组合查询
+     * GET /courses/search?courseName=数据库&status=OPEN&teacherId=2
+     */
+    @GetMapping("/course/search")
+    public R<List<CourseInfo>> searchCourses(
+            @RequestParam(required = false) String courseName,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Integer teacherId) {
+
+        List<CourseInfo> list = courseInfoService.listByCondition(courseName, status, teacherId);
+        return R.success(list);
     }
 
 }
