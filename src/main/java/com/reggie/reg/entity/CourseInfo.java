@@ -44,8 +44,9 @@ public class CourseInfo implements Serializable {
     private String courseName;
 
     /**
-     * 学分
+     * 学分使用字符串进行转化 保证数据精度
      */
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     private BigDecimal credits;
 
     /**
@@ -69,13 +70,15 @@ public class CourseInfo implements Serializable {
     private Boolean selectionOpen;
 
     /**
-     * 开始日期
+     * 开始日期 指定前端的输入格式
      */
+    @JsonFormat(pattern = "yyyy-M-d", shape = JsonFormat.Shape.STRING)
     private LocalDate startDate;
 
     /**
-     * 结束日期
+     * 结束日期 指定前端的输入格式
      */
+    @JsonFormat(pattern = "yyyy-M-d", shape = JsonFormat.Shape.STRING)
     private LocalDate endDate;
 
 

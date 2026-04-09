@@ -39,6 +39,10 @@ public class CourseInfoController {
         if (session == null) {
             return R.error("NOT_LOGIN");
         }
+        // 检测传入时间是否合法
+        if (dto.getStartDate() == null || dto.getEndDate() == null) {
+            return R.error("课程时间不合法");
+        }
 
         // ⭐ 从 Session 获取用户信息（安全）
         Integer userId = (Integer) session.getAttribute("sys_user");
