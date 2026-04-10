@@ -1,10 +1,14 @@
 package com.reggie.reg.entity;
 
 import java.math.BigDecimal;
+
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.IdType;
+
 import java.time.LocalDate;
+
 import com.baomidou.mybatisplus.annotation.TableId;
+
 import java.io.Serializable;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -80,6 +84,4 @@ public class CourseInfo implements Serializable {
      */
     @JsonFormat(pattern = "yyyy-M-d", shape = JsonFormat.Shape.STRING)
     private LocalDate endDate;
-
-
 }

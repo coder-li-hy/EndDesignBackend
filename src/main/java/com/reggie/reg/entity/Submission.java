@@ -75,5 +75,6 @@ public class Submission implements Serializable {
      */
     private LocalDateTime gradeTime;
 
+    private String auditStatus;  // 添加这个字段
 
 }

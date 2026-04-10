@@ -53,6 +53,7 @@ public class CourseResource implements Serializable {
     private String auditStatus;
 
     private LocalDateTime createTime;
+    // CourseResource.java
 
 
 }

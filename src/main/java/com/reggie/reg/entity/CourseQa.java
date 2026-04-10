@@ -59,5 +59,6 @@ public class CourseQa implements Serializable {
      */
     private LocalDateTime answerTime;
 
+    private String auditStatus;  // 添加这个字段
 
 }
