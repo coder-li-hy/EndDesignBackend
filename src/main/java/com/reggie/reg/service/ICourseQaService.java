@@ -12,5 +12,6 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * @since 2026-04-08
  */
 public interface ICourseQaService extends IService<CourseQa> {
+    public boolean submitQa(CourseQa qa);
 
 }

@@ -12,5 +12,6 @@ import com.baomidou.mybatisplus.extension.service.IService;
  * @since 2026-04-08
  */
 public interface ISubmissionService extends IService<Submission> {
+    public boolean submitAssignment(Submission submission);
 
 }

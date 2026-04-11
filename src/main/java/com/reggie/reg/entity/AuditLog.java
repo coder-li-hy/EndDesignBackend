@@ -43,6 +43,10 @@ public class AuditLog implements Serializable {
      */
     private Integer auditorId;
 
+    /**
+     * 审核状态（也是结果）
+     * 枚举类型：PASS, REJECT,PENDING
+     */
     private String result;
 
     /**

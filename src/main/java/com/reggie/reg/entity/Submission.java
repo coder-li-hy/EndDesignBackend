@@ -50,6 +50,11 @@ public class Submission implements Serializable {
 
     private LocalDateTime submitTime;
 
+//    /**
+//     * 截止时间
+//     */
+//    private LocalDateTime deadline;
+
     /**
      * 是否迟交
      */
