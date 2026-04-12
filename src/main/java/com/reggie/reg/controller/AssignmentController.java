@@ -205,7 +205,6 @@ public class AssignmentController {
         submission.setTeacherComment(dto.getTeacherComment());
         submission.setGradeTime(LocalDateTime.now());
         submissionService.updateById(submission);
-
         return R.success("批改成功");
     }
 }

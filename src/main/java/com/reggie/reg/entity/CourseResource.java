@@ -55,5 +55,11 @@ public class CourseResource implements Serializable {
     private LocalDateTime createTime;
     // CourseResource.java
 
+    /**
+     * 文件的名字（如果资源类型是文件）
+     * 仅作前端展示用
+     */
+    private String oriName;
+
 
 }

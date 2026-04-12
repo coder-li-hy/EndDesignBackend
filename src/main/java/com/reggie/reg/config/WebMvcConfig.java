@@ -4,6 +4,7 @@ import com.reggie.reg.common.JacksonObjectMapper;
 import com.reggie.reg.interceptor.LoginCheckInterceptor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
@@ -20,6 +21,9 @@ import java.util.List;
 @Slf4j
 @Configuration
 public class WebMvcConfig extends WebMvcConfigurationSupport {
+    // ⭐ 新增：读取上传路径配置（添加默认值 + 兼容 Windows 路径）
+    @Value("${reggie.path:E:/EndDesign/backend3/src/main/resources/file/}")
+    private String uploadPath;
     /**
      * 进行静态资源映射
      * 重写类中的方法，使放在resources中的静态资源能够被访问到
@@ -28,13 +32,19 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
      */
     @Override
     protected void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // ⭐ 映射 /uploads/** 到本地文件目录
+        // 前端访问: http://your-domain/uploads/abc123.pptx
+        // 实际读取: E:/EndDesign/backend3/src/main/resources/file/abc123.pptx
+        log.info("配置文件上传路径: {}", uploadPath);
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:" + uploadPath);
 
         //将前段的请求映射到后端页面的静态资源中
-        log.info("开始静态资源映射！");
-        registry.addResourceHandler("/backend/**").addResourceLocations("classpath:/backend/");
-        registry.addResourceHandler("/front/**").addResourceLocations("classpath:/front/");
-        log.info("静态资源映射成功！");
-
+//        log.info("开始静态资源映射！");
+//        registry.addResourceHandler("/backend/**").addResourceLocations("classpath:/backend/");
+//        registry.addResourceHandler("/front/**").addResourceLocations("classpath:/front/");
+//        log.info("静态资源映射成功！");
+//
     }
 
     //注入请求拦截器
