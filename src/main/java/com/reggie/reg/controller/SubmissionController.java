@@ -4,9 +4,11 @@ package com.reggie.reg.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.reggie.reg.common.R;
 import com.reggie.reg.entity.Assignment;
+import com.reggie.reg.entity.AuditLog;
 import com.reggie.reg.entity.CourseSelection;
 import com.reggie.reg.entity.Submission;
 import com.reggie.reg.service.IAssignmentService;
+import com.reggie.reg.service.IAuditLogService;
 import com.reggie.reg.service.ICourseSelectionService;
 import com.reggie.reg.service.ISubmissionService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,6 +37,7 @@ public class SubmissionController {
     private final IAssignmentService assignmentService;
     private final ISubmissionService submissionService;
     private final ICourseSelectionService courseSelectionService;
+    private final IAuditLogService auditLogService;
 
     /**
      * 1. 获取课程作业列表（含学生提交状态）
@@ -154,10 +157,15 @@ public class SubmissionController {
 
             // 3. 校验是否允许提交（简化：不强制校验截止时间，由 allowLate 控制）
             boolean isLate = false;
+            String lateReason = null;
             if (assignment.getDeadline() != null && LocalDateTime.now().isAfter(assignment.getDeadline())) {
                 isLate = true;
                 if (!Boolean.TRUE.equals(assignment.getAllowLate())) {
                     return R.error("该作业已截止，不允许迟交");
+                }
+                lateReason = (String) params.get("lateReason");
+                if (lateReason == null || lateReason.trim().isEmpty()) {
+                    return R.error("迟交作业必须填写迟交理由");
                 }
             }
 
@@ -181,6 +189,8 @@ public class SubmissionController {
 
             // ⭐ 审核状态：提交后进入待审核
             submission.setAuditStatus("PENDING");
+             // TODO:向AuditLog中添加记录
+            createAuditLogForSubmission(submission.getSubmissionId(), studentId);
 
             submissionService.save(submission);
 
@@ -240,6 +250,20 @@ public class SubmissionController {
             System.err.println("Get my submissions error: " + e.getMessage());
             return R.success(new ArrayList<>());
         }
+    }
+    /**
+     * ⭐ 核心方法：为作业提交创建审核记录
+     * @param submissionId 提交记录 ID
+     * @param studentId 提交学生 ID（用于记录提交者）
+     */
+    private void createAuditLogForSubmission(Integer submissionId, Integer studentId) {
+        AuditLog audit = new AuditLog();
+        audit.setTargetType("SUBMISSION");        // ⭐ 固定类型：作业提交
+        audit.setTargetId(submissionId);           // ⭐ 关联提交记录 ID
+        audit.setResult("PENDING");                // ⭐ 初始状态：待审核
+        audit.setAuditTime(LocalDateTime.now());   // ⭐ 创建时间
+        // auditorId 和 reason 留空，等管理员审核时再填
+        auditLogService.save(audit);
     }
 
 }
