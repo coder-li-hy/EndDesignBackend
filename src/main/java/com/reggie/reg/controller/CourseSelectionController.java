@@ -268,7 +268,7 @@ public class CourseSelectionController {
      * 2. 选课/排队
      * POST /api/student/courses/{courseId}/select
      */
-    @PostMapping("/{courseId}/select")
+    @PostMapping("/student/courses/{courseId}/select")
     public R<String> selectCourse(
             @PathVariable Integer courseId,
             @RequestBody Map<String, Integer> params,
