@@ -3,6 +3,7 @@ package com.reggie.reg.entity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+
 import java.time.LocalDateTime;
 import java.io.Serializable;
 
@@ -31,10 +32,13 @@ public class Notification implements Serializable {
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Integer notifyId;
 
+    /**
+     * 发布者ID 如果是系统通知则为1 本系统采用单管理员 只有管理员才有权力发送系统通知
+     */
     private Integer publisherId;
 
     /**
-     * 若为系统通知则为 NULL
+     * 若与课程无关则为0 无需传入
      */
     private Integer courseId;
 
@@ -45,6 +49,11 @@ public class Notification implements Serializable {
     private String content;
 
     private LocalDateTime publishTime;
+
+    /**
+     * 接收者ID 如果为系统通知 则为0 发给所有人
+     */
+    private Integer receiverId;
 
 
 }

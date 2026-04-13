@@ -245,6 +245,10 @@ public class AssignmentController {
             // 3. 查课程信息（获取选课人数 = 应交份数）
             int total = course.getCurrentCount() != null ? course.getCurrentCount() : 0;
 
+            if (total>=course.getMaxCapacity()){
+                total= course.getMaxCapacity();
+            }
+
             // 4. 查该作业的提交记录
             List<Submission> submissions = submissionService.list(
                     new LambdaQueryWrapper<Submission>()
