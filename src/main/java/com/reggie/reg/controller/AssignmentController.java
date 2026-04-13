@@ -20,8 +20,12 @@ import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -206,5 +210,103 @@ public class AssignmentController {
         submission.setGradeTime(LocalDateTime.now());
         submissionService.updateById(submission);
         return R.success("批改成功");
+    }
+
+    /**
+     * 获取作业学习进度统计 + 提交列表
+     * GET /api/teacher/assignments/{assignmentId}/progress
+     */
+    @GetMapping("/teacher/assignments/{assignmentId}/progress")
+    public R<Map<String, Object>> getAssignmentProgress(
+            @PathVariable Integer assignmentId,
+            HttpServletRequest request) {
+
+        try {
+            // 1. 权限校验
+            Integer teacherId = (Integer) request.getSession().getAttribute("sys_user");
+            if (teacherId == null) {
+                return R.error("未登录");
+            }
+
+            // ⭐ 2. 查作业信息（校验归属 + 获取 courseId）
+            Assignment assignment = assignmentService.getById(assignmentId);
+            if (assignment == null) {
+                return R.error("作业不存在");
+            }
+
+            // ⭐ 校验作业是否属于当前教师
+            CourseInfo course = courseInfoService.getById(assignment.getCourseId());
+            if (course == null || !teacherId.equals(course.getTeacherId())) {
+                return R.error("无权访问该作业");
+            }
+
+            Integer courseId = assignment.getCourseId();  // ⭐ 正确获取 courseId
+
+            // 3. 查课程信息（获取选课人数 = 应交份数）
+            int total = course.getCurrentCount() != null ? course.getCurrentCount() : 0;
+
+            // 4. 查该作业的提交记录
+            List<Submission> submissions = submissionService.list(
+                    new LambdaQueryWrapper<Submission>()
+                            .eq(Submission::getAssignmentId, assignmentId)
+                            .orderByDesc(Submission::getSubmitTime)
+            );
+
+            // 5. 统计指标
+            int submitted = submissions.size();
+            // ⭐ 修复：Boolean 比较用 .equals() 或布尔解包
+            long lateCount = submissions.stream()
+                    .filter(s -> Boolean.TRUE.equals(s.getIsLate()))
+                    .count();
+            long passCount = submissions.stream()
+                    .filter(s -> s.getScore() != null && s.getScore().compareTo(new BigDecimal("60")) >= 0)
+                    .count();
+
+            double lateRate = submitted > 0 ? Math.round((double) lateCount / submitted * 100) : 0;
+            double passRate = submitted > 0 ? Math.round((double) passCount / submitted * 100) : 0;
+
+            // 6. 预加载学生姓名
+            List<Integer> studentIds = submissions.stream()
+                    .map(Submission::getStudentId)
+                    .distinct().collect(Collectors.toList());
+            Map<Integer, String> studentNameMap = new HashMap<>();
+            if (!studentIds.isEmpty()) {
+                sysUserService.listByIds(studentIds).forEach(u ->
+                        studentNameMap.put(u.getUserId(), u.getUsername()));
+            }
+
+            // 7. 组装提交列表
+            List<Map<String, Object>> submissionList = submissions.stream().map(s -> {
+                Map<String, Object> item = new HashMap<>();
+                item.put("submissionId", s.getSubmissionId());
+                item.put("studentName", studentNameMap.get(s.getStudentId()));
+                item.put("submitTime", s.getSubmitTime());
+                item.put("isLate", s.getIsLate());
+                item.put("score", s.getScore());
+                item.put("teacherComment", s.getTeacherComment());
+                return item;
+            }).collect(Collectors.toList());
+
+            // 8. 返回结果
+            Map<String, Object> result = new HashMap<>();
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("total", total);
+            stats.put("submitted", submitted);
+            stats.put("lateRate", lateRate);
+            stats.put("passRate", passRate);
+
+            result.put("stats", stats);
+            result.put("submissions", submissionList);
+
+            return R.success(result);
+
+        } catch (Exception e) {
+            System.err.println("Progress query error: " + e.getMessage());
+            // 容错：返回空数据
+            Map<String, Object> empty = new HashMap<>();
+            empty.put("stats", new HashMap<>());
+            empty.put("submissions", new ArrayList<>());
+            return R.success(empty);
+        }
     }
 }

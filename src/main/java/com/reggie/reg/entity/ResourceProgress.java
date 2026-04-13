@@ -13,7 +13,7 @@ import lombok.experimental.Accessors;
 
 /**
  * <p>
- * 资源学习进度表
+ * 学习进度表
  * </p>
  *
  * @author lihy
@@ -31,7 +31,10 @@ public class ResourceProgress implements Serializable {
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Integer progressId;
 
-    private Integer resourceId;
+    /**
+     * 对应的作业Id
+     */
+    private Integer assignmentId;
 
     private Integer studentId;
 
