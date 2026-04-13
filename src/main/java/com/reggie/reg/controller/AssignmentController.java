@@ -179,7 +179,7 @@ public class AssignmentController {
         // 查询提交记录 + 关联学生姓名
         List<Submission> submissions = submissionService.list(
                 new LambdaQueryWrapper<Submission>()
-                        .eq(Submission::getAssignmentId, assignmentId)
+                        .eq(Submission::getAssignmentId, assignmentId).eq(Submission::getAuditStatus, "PASS")
                         .orderByDesc(Submission::getSubmitTime)
         );
 
