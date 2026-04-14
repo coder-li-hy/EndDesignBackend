@@ -42,6 +42,10 @@ public class Notification implements Serializable {
      */
     private Integer courseId;
 
+    /**
+     * 枚举类型：SYSTEM 系统 只有管理员可以发
+     * COURSE 课程通知 由对应教师发布
+     */
     private String type;
 
     private String title;
@@ -54,6 +58,5 @@ public class Notification implements Serializable {
      * 接收者ID 如果为系统通知 则为0 发给所有人
      */
     private Integer receiverId;
-
 
 }

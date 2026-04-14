@@ -238,7 +238,7 @@ public class CourseQaController {
      * 2. 回复提问
      * PUT /api/teacher/qa/{qaId}/answer
      */
-    @PutMapping("/qa/{qaId}/answer")
+    @PutMapping("/teacher/qa/{qaId}/answer")
     public R<String> replyQuestion(
             @PathVariable Integer qaId,
             @RequestBody Map<String, Object> params,
