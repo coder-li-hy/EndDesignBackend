@@ -35,23 +35,15 @@ public class LoginCheckInterceptor implements HandlerInterceptor {
         //1.1获取本次请求的url
         StringBuffer url = request.getRequestURL();
         //1.2判断是否处于登陆状态，如果处于登陆状态，即session中有用户数据
-        Long id = (Long)request.getSession().getAttribute("employee");
+        Integer id = (Integer) request.getSession().getAttribute("sys_user");
         if (id != null) {
             //设置当前线程本地变量
-            BaseContext.setCurrentId(id);
             //直接放行
             return true;
         }
-        // 判断移动端用户的登录状态
-        if (request.getSession().getAttribute("user") != null) {
 
-            //设置当前线程本地变量
-            BaseContext.setCurrentId((Long)request.getSession().getAttribute("user"));
-            //直接放行
-            return true;
-        }
         //2.如果没有登陆则返回登陆结果，如果已经登录，则直接放行
-        String jsonResult = JSON.toJSONString(R.error("NOTLOGIN"));
+        String jsonResult = JSON.toJSONString(R.error("NOT_LOGIN"));
         response.getWriter().write(jsonResult);
         return false;
     }

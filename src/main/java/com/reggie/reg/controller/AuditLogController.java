@@ -9,6 +9,7 @@ import com.reggie.reg.service.*;
 import com.reggie.reg.vo.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/audit")
 @RequiredArgsConstructor
+@Slf4j
 public class AuditLogController {
 
     private final IAuditLogService auditLogService;
@@ -134,6 +136,7 @@ public class AuditLogController {
 
         // 2. 获取当前管理员
         Integer adminId = (Integer) request.getSession().getAttribute("sys_user");
+        log.info("{}",adminId);
         if (adminId == null) {
             return R.error("未登录");
         }

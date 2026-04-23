@@ -145,12 +145,12 @@ public class CourseQaController {
             qa.setIsAnonymous(Boolean.TRUE.equals(params.get("isAnonymous")));
             qa.setAskTime(LocalDateTime.now());
 
-            // ⭐ 审核状态：提交后进入待审核
             qa.setAuditStatus("PENDING");
 
+            // 提交课程问答
             courseQaService.save(qa);
 
-            // ⭐⭐ 创建审核日志记录
+            // 创建课程问答审核记录
             createAuditLogForQa(qa.getQaId(), studentId);
 
             return R.success("提问成功，等待审核");

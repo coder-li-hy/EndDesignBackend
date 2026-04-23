@@ -59,15 +59,8 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
      */
     @Override
     protected void addInterceptors(InterceptorRegistry registry) {
-//        registry.addInterceptor(loginCheckInterceptor).addPathPatterns("/**").excludePathPatterns("/employee/login",
-//                "/employee/logout",
-//                //以下两个是静态资源的请求地址路径模式
-//                "/backend/**",
-//                "/front/**"
-//                ,"/common/**"
-//                ,"/user/sendMsg"// 移动端短信登录
-//                ,"/user/login"// 移动端登录
-//        );
+        // TODO：注册拦截器
+
     }
 
     /**
