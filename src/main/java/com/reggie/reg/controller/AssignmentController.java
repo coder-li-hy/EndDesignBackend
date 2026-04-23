@@ -46,7 +46,7 @@ public class AssignmentController {
 
     /**
      * 1. 获取教师作业列表（按课程过滤）
-     * GET /api/teacher/assignments?courseId=1&title=&page=1&size=10
+     * GET /teacher/assignments?courseId=1&title=&page=1&size=10
      */
     @GetMapping("/teacher/assignments")
     public R<Page<Assignment>> listAssignments(
@@ -59,21 +59,26 @@ public class AssignmentController {
 
         // 权限校验：确保是当前教师自己的课程
         Integer teacherId = (Integer) request.getSession().getAttribute("sys_user");
+        // 角色身份校验 先获取
+        String role = (String) request.getSession().getAttribute("sys_user_role");
+        // 如果当前登录角色并非教师
+        if (!"TEACHER".equals(role)) {
+            return R.error("无权查看");
+        }
         // TODO: 校验 courseId 是否属于该教师
         CourseInfo course = courseInfoService.getById(courseId);
         if (course == null) {
             return R.error("课程不存在");
         }
         if (!teacherId.equals(course.getTeacherId())) {
-            // ⚠️ 安全提示：不要返回"课程不属于您"，避免枚举课程 ID
-            return R.error("无权访问该课程");
+            // 安全提示：不要返回"课程不属于您"，避免枚举课程 ID
+            return R.error("无权访问该课程及其作业");
         }
 
-
-
-
+        // /构造查询作业列表条件
         LambdaQueryWrapper<Assignment> query = new LambdaQueryWrapper<>();
-        query.eq(Assignment::getCourseId, courseId);  // ⭐ 按课程过滤
+        query.eq(Assignment::getCourseId, courseId);  // 按课程过滤
+        // 根据标题模糊查询 如果输入的查询字段不为空 根据标题进行模糊查询
         query.like(StringUtils.isNotBlank(title), Assignment::getTitle, title);
         query.orderByDesc(Assignment::getAssignmentId);
 

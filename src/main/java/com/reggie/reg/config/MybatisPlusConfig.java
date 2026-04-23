@@ -16,7 +16,7 @@ public class MybatisPlusConfig {
     public MybatisPlusInterceptor mybatisPlusInterceptor() {
         // 创建一个MybatisPlusInterceptor类型的实例
         MybatisPlusInterceptor mybatisPlusInterceptor = new MybatisPlusInterceptor();
-        // 向mybatisPlusInterceptor中添加一个PaginationInnerInterceptor类型的拦截器
+        // 向mybatisPlusInterceptor中添加一个PaginationInnerInterceptor类型的拦截器 用于分页展示
         mybatisPlusInterceptor.addInnerInterceptor(new PaginationInnerInterceptor());
         // 返回mybatisPlusInterceptor实例
         return mybatisPlusInterceptor;

@@ -61,11 +61,11 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
     protected void addInterceptors(InterceptorRegistry registry) {
         // TODO：注册拦截器
 
+
     }
 
     /**
      * 扩展mvc框架的消息转换器
-     *
      * @param converters
      */
     @Override
