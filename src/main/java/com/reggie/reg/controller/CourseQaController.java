@@ -36,42 +36,47 @@ public class CourseQaController {
     private final ICourseInfoService courseInfoService;
     private final ISysUserService sysUserService;
 
+
     /**
-     * 1. 获取学生的课程提问列表
-     * GET /api/student/qa?courseId=1&studentId=100
+     * 获取学生问答列表接口
+     * @param courseId 课程ID
+     * @param studentId 学生ID
+     * @param request HTTP请求对象，用于获取会话信息
+     * @return 返回学生问答列表，包含提问和审核通过后的回复信息
      */
     @GetMapping("/student/qa")
     public R<List<Map<String, Object>>> getStudentQaList(
-            @RequestParam Integer courseId,
-            @RequestParam Integer studentId,
-            HttpServletRequest request) {
+            @RequestParam Integer courseId,  // 课程ID参数
+            @RequestParam Integer studentId,  // 学生ID参数
+            HttpServletRequest request) {  // HTTP请求对象
 
         try {
-            // 1. 权限校验
+            // 1. 权限校验：验证当前用户是否为请求的学生本人
             Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");
             if (currentUserId == null || !currentUserId.equals(studentId)) {
                 return R.error("无权访问");
             }
 
-            // 校验课程是否已选
+            // 校验课程是否已选：查询课程选择记录，确保学生已选择该课程
             CourseSelection selection = courseSelectionService.getOne(
                     new LambdaQueryWrapper<CourseSelection>()
-                            .eq(CourseSelection::getCourseId, courseId)
-                            .eq(CourseSelection::getStudentId, studentId)
-                            .eq(CourseSelection::getStatus, "SELECTED")
+                            .eq(CourseSelection::getCourseId, courseId)  // 匹配课程ID
+                            .eq(CourseSelection::getStudentId, studentId)  // 匹配学生ID
+                            .eq(CourseSelection::getStatus, "SELECTED")  // 确保已选课状态
             );
             if (selection == null) {
                 return R.error("请先选课");
             }
 
-            // 2. 查询该学生的提问记录
+            // 2. 查询该学生的提问记录：按提问时间倒序排列 学生查看自身的提问不用加上审核通过限制
             List<CourseQa> qaList = courseQaService.list(
                     new LambdaQueryWrapper<CourseQa>()
-                            .eq(CourseQa::getCourseId, courseId)
-                            .eq(CourseQa::getStudentId, studentId)
-                            .orderByDesc(CourseQa::getAskTime)
+                            .eq(CourseQa::getCourseId, courseId)  // 匹配课程ID
+                            .eq(CourseQa::getStudentId, studentId)  // 匹配学生ID
+                            .orderByDesc(CourseQa::getAskTime)  // 按提问时间降序排列
             );
 
+            // 如果没有提问记录，返回空列表
             if (qaList.isEmpty()) {
                 return R.success(new ArrayList<>());
             }
@@ -85,7 +90,7 @@ public class CourseQaController {
                 item.put("askTime", qa.getAskTime());
                 item.put("auditStatus", qa.getAuditStatus());
 
-                // ⭐ 仅审核通过后，才返回教师回复
+                //仅审核通过后，才返回教师回复 如果审核未通过 其实教师也不会看到这条提问
                 if ("PASS".equals(qa.getAuditStatus())) {
                     item.put("answer", qa.getAnswer());
                     item.put("answerTime", qa.getAnswerTime());
@@ -103,30 +108,34 @@ public class CourseQaController {
         }
     }
 
+
     /**
-     * 2. 发起提问
-     * POST /api/student/qa
+     * 处理学生提问的接口
+     * @param params 包含提问信息的参数Map，需包含courseId, studentId, question等字段
+     * @param request HTTP请求对象，用于获取session中的用户信息
+     * @return 返回操作结果，包含成功或失败信息
      */
     @PostMapping("/student/qa")
     public R<String> askQuestion(@RequestBody Map<String, Object> params, HttpServletRequest request) {
 
         try {
-            // 1. 参数校验
+            // 1. 参数校验 - 检查必要参数是否存在
             Integer courseId = (Integer) params.get("courseId");
             Integer studentId = (Integer) params.get("studentId");
             String question = (String) params.get("question");
 
+            // 验证参数是否为空或无效 提问.trim()消除了空格
             if (courseId == null || studentId == null || question == null || question.trim().isEmpty()) {
                 return R.error("参数错误");
             }
 
-            // 权限校验
+            // 权限校验 - 验证当前用户是否为提问学生本人
             Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");
             if (currentUserId == null || !currentUserId.equals(studentId)) {
                 return R.error("无权操作");
             }
 
-            // 2. 校验课程是否已选
+            // 2. 校验课程是否已选 - 检查学生是否已选择该课程
             CourseSelection selection = courseSelectionService.getOne(
                     new LambdaQueryWrapper<CourseSelection>()
                             .eq(CourseSelection::getCourseId, courseId)
@@ -137,7 +146,7 @@ public class CourseQaController {
                 return R.error("请先选课");
             }
 
-            // 3. 创建提问记录
+            // 3. 创建提问记录 - 构建问答对象并设置属性
             CourseQa qa = new CourseQa();
             qa.setCourseId(courseId);
             qa.setStudentId(studentId);
@@ -145,117 +154,128 @@ public class CourseQaController {
             qa.setIsAnonymous(Boolean.TRUE.equals(params.get("isAnonymous")));
             qa.setAskTime(LocalDateTime.now());
 
+            // 设置审核状态为待审核
             qa.setAuditStatus("PENDING");
 
-            // 提交课程问答
+            // 提交课程问答 - 保存问答记录到数据库
             courseQaService.save(qa);
 
-            // 创建课程问答审核记录
+            // 创建课程问答审核记录 - 为新创建的问答生成审核日志
             createAuditLogForQa(qa.getQaId(), studentId);
 
             return R.success("提问成功，等待审核");
 
         } catch (Exception e) {
+            // 捕获并打印异常信息
             System.err.println("Ask question error: " + e.getMessage());
             return R.error("提交失败");
         }
     }
 
+
     /**
-     * 1. 获取教师课程的提问列表（仅审核通过的）
-     * GET /api/teacher/qa?courseId=1&teacherId=200
+     * 获取教师问答列表接口
+     * @param courseId 课程ID
+     * @param teacherId 教师ID
+     * @param request HTTP请求对象，用于获取session中的用户信息
+     * @return 返回问答列表结果，包含问题和回答信息
      */
     @GetMapping("/teacher/qa")
     public R<List<Map<String, Object>>> getTeacherQaList(
-            @RequestParam Integer courseId,
-            @RequestParam Integer teacherId,
-            HttpServletRequest request) {
+            @RequestParam Integer courseId,    // 课程ID参数
+            @RequestParam Integer teacherId,   // 教师ID参数
+            HttpServletRequest request) {      // HTTP请求对象
 
         try {
             // 1. 权限校验
-            Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");
-            if (currentUserId == null || !currentUserId.equals(teacherId)) {
-                return R.error("无权访问");
+            Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");  // 从session中获取当前登录用户ID
+            if (currentUserId == null || !currentUserId.equals(teacherId)) {  // 检查用户是否登录且是否为指定教师
+                return R.error("无权访问");  // 返回无权限错误信息
             }
 
             // 校验课程是否属于该教师 ?? 前端其实做了限制 但是后端可以保险一点
-            CourseInfo course = courseInfoService.getById(courseId);
-            if (course == null || !teacherId.equals(course.getTeacherId())) {
-                return R.error("无权访问该课程");
+            CourseInfo course = courseInfoService.getById(courseId);  // 根据课程ID获取课程信息
+            if (course == null || !teacherId.equals(course.getTeacherId())) {  // 检查课程是否存在且属于该教师
+                return R.error("无权访问该课程");  // 返回无权限访问课程的错误信息
             }
 
-            // 2. 查询该课程下审核通过的提问
-            List<CourseQa> qaList = courseQaService.list(
+            // 2. 查询该课程下审核通过的提
+            List<CourseQa> qaList = courseQaService.list(  // 查询问答列表
                     new LambdaQueryWrapper<CourseQa>()
-                            .eq(CourseQa::getCourseId, courseId)
-                            .eq(CourseQa::getAuditStatus, "PASS")  // ⭐ 只显示审核通过的
-                            .orderByDesc(CourseQa::getAskTime)
+                            .eq(CourseQa::getCourseId, courseId)  // 按课程ID筛选
+                            .eq(CourseQa::getAuditStatus, "PASS")  // 只显示审核通过的
+                            .orderByDesc(CourseQa::getAskTime)  // 按提问时间降序排列
             );
 
-            if (qaList.isEmpty()) {
-                return R.success(new ArrayList<>());
+            if (qaList.isEmpty()) {  // 如果查询结果为空
+                return R.success(new ArrayList<>());  // 返回空列表
             }
 
             // 3. 预加载学生姓名（匿名提问不显示）
-            List<Integer> studentIds = qaList.stream()
+            List<Integer> studentIds = qaList.stream()  // 获取所有非匿名提问的学生ID
                     .filter(qa -> !Boolean.TRUE.equals(qa.getIsAnonymous()))
                     .map(CourseQa::getStudentId)
                     .distinct().collect(Collectors.toList());
 
-            Map<Integer, String> studentNameMap = new HashMap<>();
-            if (!studentIds.isEmpty()) {
-                sysUserService.listByIds(studentIds).forEach(u ->
+            Map<Integer, String> studentNameMap = new HashMap<>();  // 创建学生ID到姓名的映射
+            if (!studentIds.isEmpty()) {  // 如果有学生ID
+                sysUserService.listByIds(studentIds).forEach(u ->  // 根据ID列表获取学生信息
                         studentNameMap.put(u.getUserId(), u.getUsername()));
             }
 
             // 4. 组装结果
-            List<Map<String, Object>> resultList = qaList.stream().map(qa -> {
-                Map<String, Object> item = new HashMap<>();
-                item.put("qaId", qa.getQaId());
-                item.put("question", qa.getQuestion());
-                item.put("isAnonymous", qa.getIsAnonymous());
-                item.put("askTime", qa.getAskTime());
-                item.put("answer", qa.getAnswer());
-                item.put("answerTime", qa.getAnswerTime());
+            List<Map<String, Object>> resultList = qaList.stream().map(qa -> {  // 将问答列表转换为结果列表
+                Map<String, Object> item = new HashMap<>();  // 创建结果项
+                item.put("qaId", qa.getQaId());  // 问答ID
+                item.put("question", qa.getQuestion());  // 问题内容
+                item.put("isAnonymous", qa.getIsAnonymous());  // 是否匿名
+                item.put("askTime", qa.getAskTime());  // 提问时间
+                item.put("answer", qa.getAnswer());  // 回答内容
+                item.put("answerTime", qa.getAnswerTime());  // 回答时间
 
                 // 非匿名提问才显示学生姓名
-                if (!Boolean.TRUE.equals(qa.getIsAnonymous())) {
-                    item.put("studentName", studentNameMap.get(qa.getStudentId()));
+                if (!Boolean.TRUE.equals(qa.getIsAnonymous())) {  // 如果不是匿名提问
+                    item.put("studentName", studentNameMap.get(qa.getStudentId()));  // 添加学生姓名
                 }
 
-                return item;
-            }).collect(Collectors.toList());
+                return item;  // 返回结果项
+            }).collect(Collectors.toList());  // 收集所有结果项
 
-            return R.success(resultList);
+            return R.success(resultList);  // 返回成功结果
 
-        } catch (Exception e) {
-            System.err.println("Get teacher QA error: " + e.getMessage());
-            return R.success(new ArrayList<>());  // 容错
+        } catch (Exception e) {  // 异常处理
+            System.err.println("Get teacher QA error: " + e.getMessage());  // 打印错误信息
+            return R.success(new ArrayList<>());  // 容错，返回空列表
         }
     }
 
+
     /**
-     * 2. 回复提问
-     * PUT /api/teacher/qa/{qaId}/answer
+     * 处理教师回复课程提问的接口
+     * @param qaId 提问ID，路径变量
+     * @param params 包含教师ID和回复内容的Map
+     * @param request HTTP请求对象，用于获取会话信息
+     * @return 返回操作结果，R类型封装，包含成功/失败信息
      */
     @PutMapping("/teacher/qa/{qaId}/answer")
     public R<String> replyQuestion(
-            @PathVariable Integer qaId,
-            @RequestBody Map<String, Object> params,
-            HttpServletRequest request) {
+            @PathVariable Integer qaId,  // 从路径中获取的提问ID
+            @RequestBody Map<String, Object> params,  // 请求体中的参数，包含教师ID和回复内容
+            HttpServletRequest request) {  // HTTP请求对象，用于获取当前登录用户信息
 
         try {
-            // 1. 参数校验
-            Integer teacherId = (Integer) params.get("teacherId");
-            String answer = (String) params.get("answer");
+            // 1. 参数校验：检查必要参数是否存在
+            Integer teacherId = (Integer) params.get("teacherId");  // 从参数中获取教师ID
+            String answer = (String) params.get("answer");  // 从参数中获取回复内容
 
+            // 验证提问ID、教师ID和回复内容是否为空或无效
             if (qaId == null || teacherId == null || answer == null || answer.trim().isEmpty()) {
                 return R.error("参数错误");
             }
 
-            // 权限校验
-            Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");
-            if (currentUserId == null || !currentUserId.equals(teacherId)) {
+            // 权限校验：验证当前用户是否有权限进行此操作
+            Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");  // 从会话中获取当前登录用户ID
+            if (currentUserId == null || !currentUserId.equals(teacherId)) {  // 检查用户是否已登录且与请求的教师ID一致
                 return R.error("无权操作");
             }
 
@@ -275,7 +295,7 @@ public class CourseQaController {
             qa.setAnswer(answer.trim());
             qa.setTeacherId(teacherId);
             qa.setAnswerTime(LocalDateTime.now());
-            // ⭐ 确保审核状态为通过（如果之前是其他状态）
+            // 确保审核状态为通过（如果之前是其他状态） 本质教师回复学生问题不应该改变审核状态
             qa.setAuditStatus("PASS");
 
             courseQaService.updateById(qa);
@@ -288,15 +308,24 @@ public class CourseQaController {
         }
     }
 
+
     /**
-     * ⭐ 核心方法：为提问创建审核记录
+     * 创建课程问答的审核日志
+     * @param qaId 课程问答记录ID
+     * @param studentId 学生ID（当前方法中未使用）
      */
     private void createAuditLogForQa(Integer qaId, Integer studentId) {
+        // 创建审核日志对象
         AuditLog audit = new AuditLog();
-        audit.setTargetType("QA");              // ⭐ 固定类型：课程问答
-        audit.setTargetId(qaId);                // ⭐ 关联提问记录 ID
-        audit.setResult("PENDING");             // ⭐ 初始状态：待审核
-        audit.setAuditTime(LocalDateTime.now()); // ⭐ 创建时间
+        // 设置审核目标类型为课程问答
+        audit.setTargetType("QA");              // 固定类型：课程问答
+        // 设置审核目标ID为问答记录ID
+        audit.setTargetId(qaId);                // 关联提问记录 ID
+        // 设置审核结果为待审核状态
+        audit.setResult("PENDING");             // 初始状态：待审核
+        // 设置审核时间为当前系统时间
+        audit.setAuditTime(LocalDateTime.now()); // 创建时间
+        // 保存审核日志记录
         auditLogService.save(audit);
     }
 

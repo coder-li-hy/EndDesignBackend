@@ -40,15 +40,19 @@ public class CourseSelectionController {
     private final ISysUserService userService;
     private final INotificationService notificationService;
 
+
     /**
-     * 1. 获取学生我的课程列表
-     * GET /api/student/courses/my?studentId=100&status=SELECTED|QUEUED
+     * 获取学生已选课程或排队课程列表
+     * @param studentId 学生ID
+     * @param status 课程状态（SELECTED或QUEUED），默认为SELECTED
+     * @param request HTTP请求对象，用于获取当前登录用户信息
+     * @return 返回课程信息列表，包含课程基本信息和选课状态
      */
     @GetMapping("/student/courses/my")
     public R<List<Map<String, Object>>> getMyCourses(
-            @RequestParam Integer studentId,
-            @RequestParam(required = false, defaultValue = "SELECTED") String status,
-            HttpServletRequest request) {
+            @RequestParam Integer studentId,        // 学生ID，用于查询指定学生的选课记录
+            @RequestParam(required = false, defaultValue = "SELECTED") String status,  // 课程状态，可选值为SELECTED（已选）或QUEUED（排队），默认为SELECTED
+            HttpServletRequest request) {         // HTTP请求对象，用于从Session中获取当前登录用户信息
 
         try {
             // 1. 权限校验：只能查自己的
@@ -115,33 +119,38 @@ public class CourseSelectionController {
         }
     }
 
+
     /**
-     * 2. 取消选课/排队
-     * POST /api/student/courses/{courseId}/cancel
+     * 处理学生取消选课请求的接口方法
+     * @param courseId 课程ID，路径变量
+     * @param params 包含学生ID的请求体参数
+     * @param request HTTP请求对象，用于获取会话信息
+     * @return 返回操作结果，成功或失败信息
      */
     @PostMapping("/student/courses/{courseId}/cancel")
     public R<String> cancelSelection(
-            @PathVariable Integer courseId,
-            @RequestBody Map<String, Integer> params,
-            HttpServletRequest request) {
+            @PathVariable Integer courseId,           // 从路径中获取的课程ID
+            @RequestBody Map<String, Integer> params, // 请求体中的参数，包含学生ID
+            HttpServletRequest request) {           // HTTP请求对象，用于获取会话信息
 
         try {
+            // 从请求参数中获取学生ID
             Integer studentId = params.get("studentId");
             if (studentId == null) {
                 return R.error("参数错误");
             }
 
-            // 1. 权限校验
+            // 1. 权限校验：检查当前登录用户是否为操作本人
             Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");
             if (currentUserId == null || !currentUserId.equals(studentId)) {
                 return R.error("无权操作");
             }
 
-            // 2. 查询选课记录
+            // 2. 查询选课记录：根据课程ID和学生ID查询对应的选课记录
             CourseSelection selection = selectionService.getOne(
                     new LambdaQueryWrapper<CourseSelection>()
-                            .eq(CourseSelection::getCourseId, courseId)
-                            .eq(CourseSelection::getStudentId, studentId)
+                            .eq(CourseSelection::getCourseId, courseId)  // 匹配课程ID
+                            .eq(CourseSelection::getStudentId, studentId) // 匹配学生ID
             );
 
             if (selection == null) {
@@ -170,40 +179,47 @@ public class CourseSelectionController {
         }
     }
 
+
     /**
-     * 1. 获取选课超市课程列表（可选课程）
-     * GET /api/student/courses/market?studentId=100&courseName=&page=1&size=10
+     * 获取学生可选课程市场列表
+     * @param studentId 学生ID
+     * @param courseName 课程名称（可选参数）
+     * @param page 页码（默认为1）
+     * @param size 每页大小（默认为10）
+     * @param request HTTP请求对象，用于获取会话信息
+     * @return 返回课程市场列表数据，包含分页信息和课程详情
      */
     @GetMapping("/student/courses/market")
     public R<Map<String, Object>> getCourseMarket(
-            @RequestParam Integer studentId,
-            @RequestParam(required = false) String courseName,
-            @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer size,
-            HttpServletRequest request) {
+            @RequestParam Integer studentId,        // 学生ID
+            @RequestParam(required = false) String courseName,  // 课程名称，可选参数
+            @RequestParam(defaultValue = "1") Integer page,     // 页码，默认为1
+            @RequestParam(defaultValue = "10") Integer size,    // 每页大小，默认为10
+            HttpServletRequest request) {          // HTTP请求对象
 
         try {
-            // 1. 权限校验
+            // 1. 权限校验：验证当前用户是否为该学生本人
             Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");
             if (currentUserId == null || !currentUserId.equals(studentId)) {
                 return R.error("无权访问");
             }
 
-            // 2. 查询可选课程条件
+            // 2. 查询可选课程条件：构建查询条件，筛选开放选课且状态为开放中的课程
             LambdaQueryWrapper<CourseInfo> query = new LambdaQueryWrapper<>();
             query.eq(CourseInfo::getSelectionOpen, true);  // 开放选课
             query.eq(CourseInfo::getStatus, "OPEN");        // 课程开放中
-            query.like(StringUtils.isNotBlank(courseName), CourseInfo::getCourseName, courseName);
-            query.orderByDesc(CourseInfo::getCourseId);
+            query.like(StringUtils.isNotBlank(courseName), CourseInfo::getCourseName, courseName);  // 根据课程名模糊查询
+            query.orderByDesc(CourseInfo::getCourseId);     // 按课程ID降序排列
 
-            // 3. 分页查询
+            // 3. 分页查询：执行分页查询获取课程列表
             Page<CourseInfo> coursePage = courseService.page(new Page<>(page, size), query);
 
+            // 如果查询结果为空，返回空结果集
             if (coursePage.getRecords().isEmpty()) {
                 return R.success(buildEmptyResult());
             }
 
-            // 4. 预加载关联数据
+            // 4. 预加载关联数据：优化查询性能，预加载关联数据
             List<Integer> courseIds = coursePage.getRecords().stream()
                     .map(CourseInfo::getCourseId).collect(Collectors.toList());
 
@@ -264,24 +280,31 @@ public class CourseSelectionController {
         }
     }
 
+
     /**
-     * 2. 选课/排队
-     * POST /api/student/courses/{courseId}/select
+     * 处理学生选课请求的接口方法
+     * @param courseId 课程ID，从URL路径中获取
+     * @param params 包含学生ID的请求参数
+     * @param request HTTP请求对象，用于获取会话信息
+     * @return 返回操作结果，包含成功或失败信息
      */
     @PostMapping("/student/courses/{courseId}/select")
     public R<String> selectCourse(
-            @PathVariable Integer courseId,
-            @RequestBody Map<String, Integer> params,
-            HttpServletRequest request) {
+            @PathVariable Integer courseId,  // 从URL路径中获取的课程ID
+            @RequestBody Map<String, Integer> params,  // 请求体中的参数，包含学生ID
+            HttpServletRequest request) {  // HTTP请求对象
 
         try {
+            // 从请求参数中获取学生ID
             Integer studentId = params.get("studentId");
             if (studentId == null) {
                 return R.error("参数错误");
             }
 
-            // 1. 权限校验
+            // 1. 权限校验：验证当前用户是否有权操作该学生的选课
+            // 从会话中获取当前登录用户ID
             Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");
+            // 检查用户是否已登录且与学生ID匹配
             if (currentUserId == null || !currentUserId.equals(studentId)) {
                 return R.error("无权操作");
             }
@@ -334,38 +357,58 @@ public class CourseSelectionController {
     }
 
     // 辅助方法：构建空结果
+    /**
+     * 构建一个空的查询结果对象
+     * 该方法返回一个包含空列表和总数为0的Map对象
+     * 通常用于初始化查询结果，当查询无数据时返回
+     *
+     * @return 包含两个字段的Map对象：
+     *         - "list": 一个空ArrayList，用于存放查询结果数据
+     *         - "total": 整数0，表示查询结果的总数
+     */
     private Map<String, Object> buildEmptyResult() {
+        // 创建一个新的HashMap对象用于存放结果
         Map<String, Object> result = new HashMap<>();
+        // 向结果Map中添加空列表，用于存放数据
         result.put("list", new ArrayList<>());
+        // 向结果Map中添加总数，初始值为0
         result.put("total", 0);
+        // 返回构建好的结果Map
         return result;
     }
 
 
+
     /**
-     * ⭐ 核心方法：处理排队递补逻辑
-     * 当有学生取消"已选"名额时，从排队队列中选取最早的学生递补
+     * 处理课程队列的递补功能
+     * 当有学生取消选课时，系统会自动从排队队列中选取最早排队的学生进行递补
+     * @param courseId 课程ID，用于查询对应课程的排队情况
      */
     private void handleQueueBackfill(Integer courseId) {
         // 1. 查询该课程当前排队的学生（按选课时间升序，取最早的）
+        // 使用LambdaQueryWrapper构建查询条件，查找状态为"QUEUED"且指定课程ID的学生记录
+        // 按选课时间升序排序并限制只返回1条记录，即最早排队的学生
         CourseSelection nextStudent = selectionService.getOne(
                 new LambdaQueryWrapper<CourseSelection>()
-                        .eq(CourseSelection::getCourseId, courseId)
-                        .eq(CourseSelection::getStatus, "QUEUED")
-                        .orderByAsc(CourseSelection::getSelectTime)
+                        .eq(CourseSelection::getCourseId, courseId)  // 设置课程ID条件
+                        .eq(CourseSelection::getStatus, "QUEUED")    // 设置状态为排队中
+                        .orderByAsc(CourseSelection::getSelectTime)  // 按选课时间升序排序
                         .last("LIMIT 1")  // 只取最早的一个
         );
 
         // 2. 如果没有排队学生，直接返回
+        // 检查查询结果是否为空，若为空则表示没有学生排队，无需进行递补操作
         if (nextStudent == null) {
             return;
         }
 
         // 3. 更新该学生状态为"已选"
+        // 将排队学生的状态从"QUEUED"更新为"SELECTED"，表示选课成功
         nextStudent.setStatus("SELECTED");
         selectionService.updateById(nextStudent);
 
         // 4. 更新课程当前人数 +1（递补成功）
+        // 获取课程信息，并将当前选课人数加1，反映递补成功后的实际选课情况
         CourseInfo course = courseService.getById(courseId);
         if (course != null && course.getCurrentCount() != null) {
             course.setCurrentCount(course.getCurrentCount() + 1);
@@ -373,10 +416,17 @@ public class CourseSelectionController {
         }
 
         // 5. （可选）发送通知给递补成功的学生
+        // 向成功递补选课的学生发送通知，告知其选课成功
          notifyStudent(nextStudent.getStudentId(), courseId, "恭喜！您已成功选上课程");
     }
 
     // 在 handleQueueBackfill 末尾添加
+    /**
+     * 通知学生选课递补信息
+     * @param studentId 学生ID
+     * @param courseId 课程ID
+     * @param message 通知内容
+     */
     private void notifyStudent(Integer studentId, Integer courseId, String message) {
         // 简化：记录到通知表
         Notification notify = new Notification();

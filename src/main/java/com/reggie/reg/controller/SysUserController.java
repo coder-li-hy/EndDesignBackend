@@ -29,16 +29,25 @@ public class SysUserController {
     private static final Logger log = LoggerFactory.getLogger(SysUserController.class);
     private final ISysUserService sysUserService;
 
+    /**
+     * 处理用户登录请求的接口
+     * @param request HTTP请求对象，用于获取会话信息
+     * @param sysUserDto 前端传来的用户登录信息，包含用户名和密码
+     * @return 返回登录结果，成功返回用户信息，失败返回错误信息
+     */
     @PostMapping({"/auth/login"})
     public R<SysUser> login(HttpServletRequest request, @RequestBody(required = true) SysUserDto sysUserDto) {
         // 获取前端传来的密码
         String password = sysUserDto.getPassword();
-        // 对密码进行加密
+        // 对密码进行加密，使用MD5算法
         password = DigestUtils.md5DigestAsHex(password.getBytes());
-        // 构造lambda条件查询条件
+        // 构造lambda条件查询条件，用于查询用户信息
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper();
+        // 设置查询条件：根据用户名查询
         queryWrapper.eq(SysUser::getUsername, sysUserDto.getUsername());
+        // 执行查询，获取用户信息
         SysUser sys = (SysUser) this.sysUserService.getOne(queryWrapper);
+        // 打印用户信息到日志
         log.info("{}", sys);
         // 如果没有找到该用户 用户没有被禁用
         if (sys != null && !sys.getStatus().equals("DISABLED")) {
@@ -58,17 +67,16 @@ public class SysUserController {
         }
     }
 
+
     /**
      * 获取当前登录用户信息的接口
-     *
      * @param request HTTP请求对象，用于获取会话信息
-     * @return 返回一个包含用户信息的R对象，成功状态码和用户信息
+     * @return 返回一个包含用户信息的R对象，R是统一响应封装类
      */
     @GetMapping({"/auth/info"})
     public R<SysUser> getUserInfo(HttpServletRequest request) {
         // 获取当前用户的id
         Integer id = (Integer) request.getSession().getAttribute("sys_user");
-        // 显示
         log.info("当前登录用户id为：{}", id);
         SysUser sysUser = (SysUser) this.sysUserService.getById(id);
         // 清空密码不传给前端
@@ -76,12 +84,12 @@ public class SysUserController {
         return R.success(sysUser);
     }
 
+
     /**
-     * 更新当前用户密码
-     *
-     * @param request
-     * @param sysUserDto
-     * @return
+     * 处理用户修改密码的请求
+     * @param request HTTP请求对象，用于获取会话信息
+     * @param sysUserDto 包含用户旧密码和新密码的数据传输对象
+     * @return 返回操作结果，R类型封装了操作状态和消息
      */
     @PutMapping({"/auth/password"})
     public R<String> updatePassword(HttpServletRequest request, @RequestBody SysUserDto sysUserDto) {
@@ -109,18 +117,19 @@ public class SysUserController {
         }
     }
 
+
+
     /**
-     * 更改当前用户信息
-     *
-     * @param request
-     * @param dto
-     * @return
+     * 更新用户资料接口
+     * @param request HTTP请求对象，用于获取当前登录用户信息
+     * @param dto 包含用户更新信息的DTO对象
+     * @return 返回操作结果，成功或失败信息
      */
     @PutMapping("/auth/profile")
     public R<String> updateProfile(HttpServletRequest request, @RequestBody SysUserDto dto) {
-        // 获取当前登录用户ID
+        // 获取当前登录用户ID，从session中获取
         Integer id = (Integer) request.getSession().getAttribute("sys_user");
-        // 如果没有找到用户则返回
+        // 如果没有找到用户则返回未登录错误
         if (id == null) {
             return R.error("未登录");
         }
@@ -146,11 +155,11 @@ public class SysUserController {
         return R.success("信息更新成功");
     }
 
+
     /**
-     * 处理用户登出请求的接口方法
-     *
+     * 处理用户登出请求的POST接口
      * @param request HTTP请求对象，用于获取Session信息
-     * @return 返回操作结果，包含"退出成功"的消息
+     * @return 返回一个响应对象R，包含"退出成功"的提示信息
      */
     @PostMapping("/auth/logout")
     public R<String> logout(HttpServletRequest request) {
@@ -162,15 +171,15 @@ public class SysUserController {
     }
 
 
+
     /**
-     * 管理员权限分页查询用户列表接口
-     *
-     * @param username 用户名（可选）
-     * @param role     角色（可选）
-     * @param status   状态（可选）
-     * @param page     当前页码，默认为1
-     * @param size     每页条数，默认为10
-     * @return 返回分页结果，包含用户列表数据
+     * 分页查询用户列表接口
+     * @param username 用户名（可选参数）
+     * @param role 角色（可选参数）
+     * @param status 状态（可选参数）
+     * @param page 页码（默认值为1）
+     * @param size 每页大小（默认值为10）
+     * @return 返回分页查询结果，包含用户列表数据
      */
     @GetMapping("/admin/users/page")
     public R<Page<SysUser>> listUsers(
@@ -180,10 +189,11 @@ public class SysUserController {
             @RequestParam(defaultValue = "1") Integer page,    // 页码参数，默认值为1
             @RequestParam(defaultValue = "10") Integer size) { // 每页大小参数，默认值为10
 
-        // 创建Lambda查询包装器
+        // 创建Lambda查询包装器，用于构建数据库查询条件
         LambdaQueryWrapper<SysUser> query = new LambdaQueryWrapper<>();
 
         // 动态条件拼接：根据参数是否为空来决定是否添加查询条件
+        // 使用lambda表达式指定查询字段和条件值
         query.like(username != null && !username.isEmpty(), SysUser::getUsername, username);
         query.eq(role != null && !role.isEmpty(), SysUser::getRole, role);
         query.eq(status != null && !status.isEmpty(), SysUser::getStatus, status);
@@ -199,25 +209,32 @@ public class SysUserController {
         return R.success(result);
     }
 
+
     /**
-     * 根据 ID 查询用户详情（编辑时回填数据）
-     * GET /admin/users/{userId}
+     * 根据用户ID获取用户信息
+     * @param userId 用户ID
+     * @return 返回用户信息，不包含密码
      */
     @GetMapping("/admin/{userId}")
     public R<SysUser> getUserById(@PathVariable Integer userId) {
+        // 调用服务层方法根据ID查询用户
         SysUser user = sysUserService.getById(userId);
         // 根据id查询用户
         if (user == null) {
+            // 如果用户不存在，返回错误信息
             return R.error("用户不存在");
         }
-        // 不返回密码
+        // 不返回密码，将密码哈希值设为null
         user.setPasswordHash(null);
+        // 返回成功响应和用户信息
         return R.success(user);
     }
 
+
     /**
-     * 添加新用户
-     * POST /admin/users
+     * 管理员添加用户接口
+     * @param dto 包含用户信息的DTO对象
+     * @return 返回操作结果，成功或失败信息
      */
     @PostMapping("/admin/users")
     public R<String> addUser(@RequestBody SysUserDto dto) {
@@ -241,18 +258,22 @@ public class SysUserController {
         user.setEmail(dto.getEmail());
         user.setPhone(dto.getPhone());
 
-        // 3. 保存
+        // 3. 保存用户信息到数据库
         boolean saved = sysUserService.save(user);
+        // 根据保存结果返回相应的成功或失败信息
         return saved ? R.success("用户添加成功") : R.error("添加失败");
     }
 
+
     /**
-     * 更新用户信息
-     * PUT /admin/users/{userId}
+     * 更新用户信息的接口
+     * @param userId 用户ID，路径变量
+     * @param dto 包含用户更新信息的DTO对象
+     * @return 返回操作结果，成功或失败信息
      */
     @PutMapping("/admin/users/{userId}")
     public R<String> updateUser(@PathVariable Integer userId, @RequestBody SysUserDto dto) {
-        // 根据用户id从数据库
+        // 根据用户id从数据库查询用户信息
         SysUser user = sysUserService.getById(userId);
         if (user == null) {
             return R.error("用户不存在");
@@ -281,7 +302,7 @@ public class SysUserController {
             // 更新用户手机
             if (dto.getPhone() != null) user.setPhone(dto.getPhone());
         }
-        // 更新用户信息
+        // 更新用户信息到数据库
         boolean updated = sysUserService.updateById(user);
         return updated ? R.success("用户更新成功") : R.error("更新失败");
     }
@@ -292,11 +313,12 @@ public class SysUserController {
         private String status;  // ACTIVE 或 DISABLED
     }
 
+
     /**
      * 更新用户状态接口
      * @param userId 用户ID，路径变量
-     * @param dto 包含状态信息的DTO对象 本类的内部数据类 只接受状态信息
-     * @return 返回操作结果，成功或失败信息
+     * @param dto 包含状态信息的DTO对象
+     * @return 返回操作结果，包含成功或失败信息
      */
     @PutMapping("/admin/users/{userId}/status")
     public R<String> updateStatus(@PathVariable Integer userId, @RequestBody StatusDTO dto) {
@@ -312,40 +334,53 @@ public class SysUserController {
             return R.error("管理员账号不能禁用");
         }
 
+        // 更新用户状态
         user.setStatus(dto.getStatus());
+        // 执行更新操作
         boolean updated = sysUserService.updateById(user);
 
+        // 根据状态值确定操作类型（启用/禁用）
         String action = "ACTIVE".equals(dto.getStatus()) ? "启用" : "禁用";
+        // 根据更新结果返回相应的响应信息
         return updated ? R.success("用户已" + action) : R.error("操作失败");
     }
 
+
     /**
-     * 删除单个用户
-     * DELETE /admin/users/{userId}
+     * 删除用户接口
+     * @param userId 用户ID，通过路径变量传递
+     * @return 返回操作结果，R类型封装了操作状态和消息
      */
     @DeleteMapping("/admin/users/{userId}")
     public R<String> deleteUser(@PathVariable Integer userId) {
+        // 根据用户ID查询用户信息
         SysUser user = sysUserService.getById(userId);
+        // 如果用户不存在，返回错误信息
         if (user == null) {
             return R.error("用户不存在");
         }
 
-        // 保护管理员账号
+        // 保护管理员账号，防止误删
         if ("admin".equals(user.getUsername())) {
             return R.error("管理员账号不能删除");
         }
 
+        // 执行删除操作，并根据删除结果返回相应的响应
         boolean deleted = sysUserService.removeById(userId);
         return deleted ? R.success("删除成功") : R.error("删除失败");
     }
 
+
     /**
-     * 批量删除用户
-     * DELETE /admin/users/batch
+     * 批量删除用户接口
+     * @param dto 包含要删除的用户ID列表的传输对象
+     * @return 返回操作结果，成功或失败信息
      */
     @DeleteMapping("/admin/users/batch")
     public R<String> batchDelete(@RequestBody BatchDeleteDTO dto) {
+        // 获取要删除的用户ID列表
         List<Integer> userIds = dto.getUserIds();
+        // 检查用户ID列表是否为空
         if (userIds == null || userIds.isEmpty()) {
             return R.error("请选择要删除的用户 无法删除管理员账号");
         }
@@ -355,34 +390,40 @@ public class SysUserController {
         List<Integer> safeIds = userIds.stream() // 创建流
                 .filter(id -> {
                     // 检查删除过程中有无管理员账号
+                    // 根据ID获取用户信息
                     SysUser user = sysUserService.getById(id);
                     // 如果用户存在且用户身份不为admin则放过
                     return user != null && !"admin".equals(user.getUsername());
                 })
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()); // 将过滤后的结果收集为列表
 
+        // 检查过滤后的ID列表是否为空（即全是管理员账号）
         if (safeIds.isEmpty()) {
             return R.error("无法删除管理员账号");
         }
 
+        // 执行批量删除操作
         boolean deleted = sysUserService.removeBatchByIds(safeIds);
+        // 根据删除结果返回相应的响应信息
         return deleted ? R.success("批量删除成功") : R.error("删除失败");
     }
 
 
+
     /**
-     * 重置用户密码
-     * POST /admin/users/{userId}/reset-pwd
+     * 重置用户密码的接口
+     * @param userId 用户ID，通过路径变量传递
+     * @return 返回操作结果，成功或失败信息
      */
     @PostMapping("/admin/users/{userId}/reset-pwd")
     public R<String> resetPassword(@PathVariable Integer userId) {
-        // 根据用户id从数据库提取相关用户
+        // 根据用户id从数据库提取相关用户信息
         SysUser user = sysUserService.getById(userId);
         if (user == null) {
             return R.error("用户不存在");
         }
 
-        // 保护管理员账号
+        // 保护管理员账号，不允许重置管理员密码
         if ("admin".equals(user.getUsername())) {
             return R.error("管理员密码不能重置");
         }
@@ -443,9 +484,11 @@ public class SysUserController {
         }
     }
 
+
     /**
-     * 校验当前操作者是否为管理员
-     * 私有方法，供其他接口调用
+     * 检查当前用户是否具有管理员角色的方法
+     * @param request HttpServletRequest对象，用于获取session信息
+     * @return 返回R<String>对象，如果校验失败则返回错误信息，校验通过则返回null
      */
     private R<String> checkAdminRole(HttpServletRequest request) {
         // 获取当前session 如果没有session则不重新创建
@@ -457,6 +500,7 @@ public class SysUserController {
         // 获取当前用户角色
         String role = (String) session.getAttribute("sys_user_role");
 
+        // 检查用户角色是否为管理员
         if (!"ADMIN".equals(role)) {
             return R.error("无权访问");
         }

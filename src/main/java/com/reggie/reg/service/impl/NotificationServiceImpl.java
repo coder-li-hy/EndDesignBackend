@@ -20,11 +20,13 @@ import java.time.LocalDateTime;
  */
 @Service
 public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Notification> implements INotificationService {
+
     /**
-     * 管理员发送系统通知
-     * @param notification 前端传入的通知对象（仅需title/content）
-     * @param adminId 从令牌解析的管理员ID
-     * @return 通用返回结果
+     * 发送系统通知
+     * @param notification 通知对象，包含标题和内容等信息
+     * @param adminId 管理员ID，用于标识通知发布者
+     * @return 返回操作结果，R.success表示成功，R.error表示失败
+     * @Transactional 确保方法在发生异常时进行回滚，保证数据一致性
      */
     @Transactional(rollbackFor = Exception.class)
     public R<String> sendSystemNotification(Notification notification, Integer adminId) {
@@ -43,9 +45,9 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
 
         // 2. 封装系统通知固定字段（严格遵循业务规则）
         notification.setPublisherId(adminId != null ? adminId : 1);  // 管理员ID，默认1
-        notification.setCourseId(null);              // ⚠️ 与课程无关设为0
-        notification.setType("SYSTEM");           // ⚠️ 系统通知类型
-        notification.setReceiverId(0);            // ⚠️ 接收者为所有人
+        notification.setCourseId(null);              // 与课程无关设为0
+        notification.setType("SYSTEM");           // 系统通知类型
+        notification.setReceiverId(0);            //  接收者为所有人
         notification.setPublishTime(LocalDateTime.now());
 
         // 3. 持久化保存

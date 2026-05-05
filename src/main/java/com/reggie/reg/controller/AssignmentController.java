@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 /**
  * <p>
- * 作业表 前端控制器
+ * 作业表 前端控制器 作业在设计中不受内容审核管控
  * </p>
  *
  * @author lihy
@@ -87,7 +87,7 @@ public class AssignmentController {
 
     /**
      * 2. 发布作业
-     * POST /api/teacher/assignments
+     * POST /teacher/assignments
      */
     @PostMapping("/teacher/assignments")
     public R<String> createAssignment(@RequestBody Assignment assignment, HttpServletRequest request) {
@@ -111,7 +111,7 @@ public class AssignmentController {
 
     /**
      * 3. 更新作业
-     * PUT /api/teacher/assignments/{assignmentId}
+     * PUT /teacher/assignments/{assignmentId}
      */
     @PutMapping("/teacher/assignments/{assignmentId}")
     public R<String> updateAssignment(@PathVariable Integer assignmentId,
@@ -146,7 +146,7 @@ public class AssignmentController {
         Assignment assignment = assignmentService.getById(assignmentId);
         if (assignment == null) return R.error("作业不存在");
 
-        // ✅ 权限校验
+        // 权限校验
         CourseInfo course = courseInfoService.getById(assignment.getCourseId());
         if (course == null || !teacherId.equals(course.getTeacherId())) {
             return R.error("无权删除该作业");
@@ -166,13 +166,13 @@ public class AssignmentController {
 
     /**
      * 5. 查看某作业的提交列表
-     * GET /api/teacher/assignments/{assignmentId}/submissions
+     * GET /teacher/assignments/{assignmentId}/submissions
      */
     @GetMapping("/teacher/assignments/{assignmentId}/submissions")
     public R<List<SubmissionVO>> getSubmissions(@PathVariable Integer assignmentId,HttpServletRequest request) {
         Integer teacherId = (Integer) request.getSession().getAttribute("sys_user");
 
-        // ✅ 校验作业归属
+        // 校验作业归属
         Assignment assignment = assignmentService.getById(assignmentId);
         if (assignment == null) return R.error("作业不存在");
 
@@ -184,6 +184,7 @@ public class AssignmentController {
         // 查询提交记录 + 关联学生姓名
         List<Submission> submissions = submissionService.list(
                 new LambdaQueryWrapper<Submission>()
+                        // 查询已经审核通过的提交记录
                         .eq(Submission::getAssignmentId, assignmentId).eq(Submission::getAuditStatus, "PASS")
                         .orderByDesc(Submission::getSubmitTime)
         );
@@ -202,24 +203,31 @@ public class AssignmentController {
 
     /**
      * 6. 批改作业（打分 + 评语）
-     * PUT /api/teacher/submissions/{submissionId}/grade
+     * PUT /teacher/submissions/{submissionId}/grade
      */
     @PutMapping("/teacher/submissions/{submissionId}/grade")
     public R<String> gradeSubmission(@PathVariable Integer submissionId,
                                      @RequestBody GradeDTO dto) {
+        // 根据提交记录ID获取提交记录
         Submission submission = submissionService.getById(submissionId);
+        // 判断提交记录是否存在，若不存在则返回错误信息
         if (submission == null) return R.error("提交记录不存在");
 
+        // 设置提交记录的分数
         submission.setScore(dto.getScore());
+        // 设置提交记录的教师评语
         submission.setTeacherComment(dto.getTeacherComment());
+        // 设置批改时间为当前时间
         submission.setGradeTime(LocalDateTime.now());
+        // 更新提交记录信息
         submissionService.updateById(submission);
+        // 返回批改成功的响应信息
         return R.success("批改成功");
     }
 
     /**
      * 获取作业学习进度统计 + 提交列表
-     * GET /api/teacher/assignments/{assignmentId}/progress
+     * GET /teacher/assignments/{assignmentId}/progress
      */
     @GetMapping("/teacher/assignments/{assignmentId}/progress")
     public R<Map<String, Object>> getAssignmentProgress(
@@ -233,19 +241,19 @@ public class AssignmentController {
                 return R.error("未登录");
             }
 
-            // ⭐ 2. 查作业信息（校验归属 + 获取 courseId）
+            // 2. 查作业信息（校验归属 + 获取 courseId）
             Assignment assignment = assignmentService.getById(assignmentId);
             if (assignment == null) {
                 return R.error("作业不存在");
             }
 
-            // ⭐ 校验作业是否属于当前教师
+            // 校验作业是否属于当前教师
             CourseInfo course = courseInfoService.getById(assignment.getCourseId());
             if (course == null || !teacherId.equals(course.getTeacherId())) {
                 return R.error("无权访问该作业");
             }
 
-            Integer courseId = assignment.getCourseId();  // ⭐ 正确获取 courseId
+            Integer courseId = assignment.getCourseId();  // 正确获取 courseId
 
             // 3. 查课程信息（获取选课人数 = 应交份数）
             int total = course.getCurrentCount() != null ? course.getCurrentCount() : 0;
@@ -263,7 +271,7 @@ public class AssignmentController {
 
             // 5. 统计指标
             int submitted = submissions.size();
-            // ⭐ 修复：Boolean 比较用 .equals() 或布尔解包
+            // 修复：Boolean 比较用 .equals() 或布尔解包
             long lateCount = submissions.stream()
                     .filter(s -> Boolean.TRUE.equals(s.getIsLate()))
                     .count();
