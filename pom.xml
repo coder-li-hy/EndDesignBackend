@@ -27,6 +27,19 @@
             <!-- 如果你是父工程为 spring-boot-starter-parent，通常不需要写 version -->
         </dependency>
 
+        <!-- 添加 Apache POI 依赖 -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.3</version>
+        </dependency>
+        <!-- 如果还没添加，加入 OpenCSV 依赖（轻量级 CSV 解析） -->
+        <dependency>
+            <groupId>com.opencsv</groupId>
+            <artifactId>opencsv</artifactId>
+            <version>5.7.1</version>
+        </dependency>
+
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

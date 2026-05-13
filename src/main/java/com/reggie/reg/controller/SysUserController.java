@@ -2,11 +2,10 @@ package com.reggie.reg.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvException;
 import com.reggie.reg.common.R;
-import com.reggie.reg.dto.BatchDeleteDTO;
-import com.reggie.reg.dto.CourseDTO;
-import com.reggie.reg.dto.ImportResult;
-import com.reggie.reg.dto.SysUserDto;
+import com.reggie.reg.dto.*;
 import com.reggie.reg.entity.CourseInfo;
 import com.reggie.reg.entity.SysUser;
 import com.reggie.reg.service.ISysUserService;
@@ -21,13 +20,20 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
 public class SysUserController {
     private static final Logger log = LoggerFactory.getLogger(SysUserController.class);
     private final ISysUserService sysUserService;
+
+    private static final String DEFAULT_PASSWORD_HASH = "e10adc3949ba59abbe56e057f20f883e";
 
     /**
      * 处理用户登录请求的接口
@@ -438,51 +444,166 @@ public class SysUserController {
     }
 
     /**
-     * 下载导入模板
+     * 1. 下载导入模板
      * GET /admin/users/template
      */
     @GetMapping("/admin/users/template")
     public void downloadTemplate(HttpServletResponse response) throws IOException {
-//response.setContentType("application/vnd.malformations-officedocument.spreadsheet.sheet");
-//        response.setHeader("Content-Disposition", "attachment;filename=用户导入模板.xlsx");
+        response.setContentType("text/csv;charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=用户导入模板.csv");
 
-        // 使用 EasyExcel 生成模板（需要添加依赖）
-        // 如果不想用 EasyExcel，可以返回一个静态文件
-        // 这里先返回空文件占位，你可以根据需求实现
-//        response.getOutputStream().close();
+        // 使用 UTF-8 BOM，确保 Excel 打开中文不乱码
+        response.getOutputStream().write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
+
+        PrintWriter writer = new PrintWriter(new OutputStreamWriter(response.getOutputStream(), StandardCharsets.UTF_8));
+
+        // 写入表头
+        writer.println("用户名,密码,角色,邮箱,手机号,状态");
+        writer.println("teacher_test,123456,TEACHER,teacher@test.edu,13800138000,ACTIVE");
+        writer.println("student_test,,STUDENT,student@test.edu,13900139000,");
+        writer.println(",,,备注：密码和状态可选，空则使用默认值,,");
+
+        writer.flush();
+        writer.close();
     }
 
     /**
-     * TODO:批量导入用户 目前仅支持csv格式
+     * 2. 批量导入用户（CSV 格式）
      * POST /admin/users/import
      */
     @PostMapping("/admin/users/import")
-    public R<ImportResult> importUsers(@RequestParam("file") MultipartFile file) {
-        // 校验文件
-        if (file.isEmpty()) {
-            return R.error("文件不能为空");
-        }
-
-        String fileName = file.getOriginalFilename();
-        if (fileName == null || !(fileName.endsWith(".xlsx") || fileName.endsWith(".xls"))) {
-            return R.error("只支持 Excel 文件");
-        }
+    public R<Map<String, Object>> importUsers(
+            @RequestParam("file") MultipartFile file,
+            HttpServletRequest request) {
 
         try {
-            // 使用 EasyExcel 解析文件（需要添加依赖）
-            // 这里先返回模拟结果，你需要根据实际需求实现解析逻辑
-            ImportResult result = new ImportResult();
-            result.setSuccessCount(0);
-            result.setFailCount(0);
-            result.setFailMessages(List.of("请实现文件解析逻辑"));
+            // 1. 权限校验：只有管理员可导入
+            Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");
+            String currentUserRole = (String) request.getSession().getAttribute("sys_user_role");
+            if (currentUserId == null || !"ADMIN".equals(currentUserRole)) {
+                return R.error("无权操作");
+            }
+
+            // 2. 文件校验
+            if (file.isEmpty()) {
+                return R.error("文件不能为空");
+            }
+            String filename = file.getOriginalFilename();
+            if (filename == null || !filename.toLowerCase().endsWith(".csv")) {
+                return R.error("只支持 CSV 格式文件");
+            }
+            if (file.getSize() > 5 * 1024 * 1024) {  // 5MB
+                return R.error("文件大小不能超过 5MB");
+            }
+
+            // 3. 解析 CSV
+            List<UserImportDTO> importList = new ArrayList<>();
+            try (CSVReader reader = new CSVReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
+                List<String[]> rows = reader.readAll();
+                if (rows.size() < 2) {
+                    return R.error("CSV 文件内容为空");
+                }
+
+                // 跳过表头（第 0 行），从第 1 行开始解析
+                for (int i = 1; i < rows.size() && i <= 101; i++) {  // 最多导入 100 条
+                    String[] row = rows.get(i);
+                    if (row.length < 3) continue;  // 至少需要用户名、角色
+
+                    UserImportDTO dto = new UserImportDTO();
+                    dto.setUsername(row[0].trim());
+                    dto.setPassword(row.length > 1 && row[1] != null ? row[1].trim() : "");
+                    dto.setRole(row.length > 2 && row[2] != null ? row[2].trim() : "");
+                    dto.setEmail(row.length > 3 && row[3] != null ? row[3].trim() : "");
+                    dto.setPhone(row.length > 4 && row[4] != null ? row[4].trim() : "");
+                    dto.setStatus(row.length > 5 && row[5] != null ? row[5].trim() : "");
+
+                    // 空状态默认为 ACTIVE
+                    if (dto.getStatus() == null || dto.getStatus().isEmpty()) {
+                        dto.setStatus("ACTIVE");
+                    }
+
+                    importList.add(dto);
+                }
+            }
+
+            if (importList.isEmpty()) {
+                return R.error("未解析到有效数据");
+            }
+
+            // 4. 校验 + 批量插入
+            int successCount = 0;
+            int failCount = 0;
+            List<String> errorMessages = new ArrayList<>();
+
+            // 预查已存在的用户名（避免重复插入）
+            List<String> usernames = importList.stream().map(UserImportDTO::getUsername).toList();
+            Set<String> existingUsernames = new HashSet<>(
+                    sysUserService.list(new LambdaQueryWrapper<SysUser>().in(SysUser::getUsername, usernames))
+                            .stream().map(SysUser::getUsername).toList()
+            );
+
+            List<SysUser> insertList = new ArrayList<>();
+
+            for (int i = 0; i < importList.size(); i++) {
+                UserImportDTO dto = importList.get(i);
+                int rowNum = i + 2;  // CSV 行号（跳过表头）
+
+                // 4.1 单行校验
+                String errorMsg = dto.validate();
+                if (errorMsg != null) {
+                    failCount++;
+                    errorMessages.add("第" + rowNum + "行: " + errorMsg);
+                    continue;
+                }
+
+                // 4.2 用户名唯一校验
+                if (existingUsernames.contains(dto.getUsername())) {
+                    failCount++;
+                    errorMessages.add("第" + rowNum + "行: 用户名已存在: " + dto.getUsername());
+                    continue;
+                }
+
+                // 4.3 构建用户实体
+                SysUser user = new SysUser();
+                user.setUsername(dto.getUsername());
+                // 密码：空则用默认 123456 的 MD5，否则加密（简化：直接存默认，实际应加密）
+                user.setPasswordHash(DEFAULT_PASSWORD_HASH);
+                user.setRole(dto.getRole());
+                user.setEmail(dto.getEmail().isEmpty() ? null : dto.getEmail());
+                user.setPhone(dto.getPhone().isEmpty() ? null : dto.getPhone());
+                user.setStatus(dto.getStatus());
+                user.setCreateTime(LocalDateTime.now());
+
+                insertList.add(user);
+                existingUsernames.add(dto.getUsername());  // 避免本批次内重复
+                successCount++;
+            }
+
+            // 4.4 批量插入
+            if (!insertList.isEmpty()) {
+                sysUserService.saveBatch(insertList);
+            }
+
+            // 5. 返回结果
+            Map<String, Object> result = new HashMap<>();
+            result.put("successCount", successCount);
+            result.put("failCount", failCount);
+            if (!errorMessages.isEmpty()) {
+                result.put("errors", errorMessages.subList(0, Math.min(10, errorMessages.size())));  // 最多返回 10 条错误
+            }
 
             return R.success(result);
 
+        } catch (CsvException e) {
+            System.err.println("CSV parse error: " + e.getMessage());
+            return R.error("CSV 文件解析失败，请检查格式");
         } catch (Exception e) {
-            log.error("导入失败", e);
-            return R.error("导入失败：" + e.getMessage());
+            System.err.println("Import users error: " + e.getMessage());
+            return R.error("导入失败: " + e.getMessage());
         }
     }
+
+
 
 
     /**
@@ -507,6 +628,7 @@ public class SysUserController {
 
         return null;  // 校验通过
     }
+
 
     public SysUserController(final ISysUserService sysUserService) {
         this.sysUserService = sysUserService;

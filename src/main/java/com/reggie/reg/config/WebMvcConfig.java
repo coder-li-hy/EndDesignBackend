@@ -22,7 +22,7 @@ import java.util.List;
 @Configuration
 public class WebMvcConfig extends WebMvcConfigurationSupport {
     // ⭐ 新增：读取上传路径配置（添加默认值 + 兼容 Windows 路径）
-    @Value("${reggie.path:E:/EndDesign/backend3/src/main/resources/file/}")
+    @Value("${reggie.path:E:/EndDesign/backend3/src/main/resources/file/upload/}")
     private String uploadPath;
     /**
      * 进行静态资源映射
@@ -33,10 +33,10 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
     @Override
     protected void addResourceHandlers(ResourceHandlerRegistry registry) {
         // ⭐ 映射 /uploads/** 到本地文件目录
-        // 前端访问: http://your-domain/uploads/abc123.pptx
+        // 前端访问: http://your-domain/upload/abc123.pptx
         // 实际读取: E:/EndDesign/backend3/src/main/resources/file/abc123.pptx
         log.info("配置文件上传路径: {}", uploadPath);
-        registry.addResourceHandler("/uploads/**")
+        registry.addResourceHandler("/upload/**")
                 .addResourceLocations("file:" + uploadPath);
 
         //将前段的请求映射到后端页面的静态资源中
