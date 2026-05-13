@@ -207,7 +207,7 @@ public class CourseSelectionController {
             // 2. 查询可选课程条件：构建查询条件，筛选开放选课且状态为开放中的课程
             LambdaQueryWrapper<CourseInfo> query = new LambdaQueryWrapper<>();
             query.eq(CourseInfo::getSelectionOpen, true);  // 开放选课
-            query.eq(CourseInfo::getStatus, "OPEN");        // 课程开放中
+            query.eq(CourseInfo::getStatus, "OPEN");        // 课程选课开放中
             query.like(StringUtils.isNotBlank(courseName), CourseInfo::getCourseName, courseName);  // 根据课程名模糊查询
             query.orderByDesc(CourseInfo::getCourseId);     // 按课程ID降序排列
 
@@ -422,7 +422,7 @@ public class CourseSelectionController {
 
     // 在 handleQueueBackfill 末尾添加
     /**
-     * 通知学生选课递补信息
+     * 通知学生选课递补信息 我会把这个通知做成系统通知
      * @param studentId 学生ID
      * @param courseId 课程ID
      * @param message 通知内容

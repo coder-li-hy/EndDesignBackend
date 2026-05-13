@@ -1,7 +1,9 @@
 package com.reggie.reg.config;
 
+import com.reggie.reg.common.GlobalConfigInterceptor;
 import com.reggie.reg.common.JacksonObjectMapper;
 import com.reggie.reg.interceptor.LoginCheckInterceptor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,10 +22,13 @@ import java.util.List;
 //为了说明该类是一个配置类
 @Slf4j
 @Configuration
+@RequiredArgsConstructor
 public class WebMvcConfig extends WebMvcConfigurationSupport {
     // ⭐ 新增：读取上传路径配置（添加默认值 + 兼容 Windows 路径）
     @Value("${reggie.path:E:/EndDesign/backend3/src/main/resources/file/upload/}")
     private String uploadPath;
+
+    private final GlobalConfigInterceptor globalConfigInterceptor;
     /**
      * 进行静态资源映射
      * 重写类中的方法，使放在resources中的静态资源能够被访问到
@@ -60,6 +65,7 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
     @Override
     protected void addInterceptors(InterceptorRegistry registry) {
         // TODO：注册拦截器
+        registry.addInterceptor(globalConfigInterceptor).addPathPatterns("/**").excludePathPatterns("/auth/**","common/upload","admin/config");
 
 
     }
