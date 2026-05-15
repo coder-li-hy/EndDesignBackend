@@ -155,9 +155,9 @@ public class SubmissionController {
 
         try {
             // 1. 参数校验：检查必要参数是否存在
-            Integer assignmentId = (Integer) params.get("assignmentId");  // 获取作业ID
-            Integer studentId = (Integer) params.get("studentId");      // 获取学生ID
-            String contentType = (String) params.get("contentType");    // 获取内容类型
+            Integer assignmentId = Integer.parseInt(String.valueOf(params.get("assignmentId")));
+            Integer studentId = Integer.parseInt(String.valueOf(params.get("studentId")));
+            String contentType = String.valueOf(params.get("contentType"));
 
             // 检查必要参数是否为空
             if (assignmentId == null || studentId == null || contentType == null) {
@@ -210,10 +210,10 @@ public class SubmissionController {
 
             // ⭐ 审核状态：提交后进入待审核
             submission.setAuditStatus("PENDING");
+            submissionService.save(submission);
              // TODO:向AuditLog中添加记录
             createAuditLogForSubmission(submission.getSubmissionId(), studentId);
 
-            submissionService.save(submission);
 
             return R.success("提交成功，等待审核");
 

@@ -7,8 +7,12 @@ import com.reggie.reg.mapper.CourseInfoMapper;
 import com.reggie.reg.service.ICourseInfoService;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.apache.commons.lang.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -21,8 +25,11 @@ import java.util.List;
  */
 @Service
 public class CourseInfoServiceImpl extends ServiceImpl<CourseInfoMapper, CourseInfo> implements ICourseInfoService {
+    @Autowired
+    private CourseInfoMapper courseMapper;
     /**
      * 根据课程名称查询课程信息列表
+     *
      * @param courseName 课程名称，支持模糊查询
      * @return 符合条件的课程信息列表
      */
@@ -52,9 +59,10 @@ public class CourseInfoServiceImpl extends ServiceImpl<CourseInfoMapper, CourseI
 
     /**
      * 根据课程名称分页查询课程信息
+     *
      * @param courseName 课程名称，可以为空
-     * @param page 当前页码
-     * @param size 每页显示数量
+     * @param page       当前页码
+     * @param size       每页显示数量
      * @return 返回分页后的课程信息结果
      */
     @Override
@@ -96,6 +104,20 @@ public class CourseInfoServiceImpl extends ServiceImpl<CourseInfoMapper, CourseI
 
         // 执行查询并返回结果列表
         return this.baseMapper.selectList(queryWrapper);
+    }
+
+    /**
+     * 更新已过期的课程状态为 ENDED
+     * ✅ 只扫描 "开放中" 的课程 + 时间索引优化
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int updateExpiredToEnded() {
+        // 使用数据库时间比较，避免查出大量数据到内存
+        return courseMapper.updateStatusByEndTime(
+                "OPEN",  // 只处理进行中的课程
+                "ENDED",    // 更新为已结束
+                LocalDate.now()              // 当前时间
+        );
     }
 
 }

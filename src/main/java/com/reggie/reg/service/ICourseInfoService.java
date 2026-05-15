@@ -18,8 +18,10 @@ import java.util.List;
 public interface ICourseInfoService extends IService<CourseInfo> {
 
 //    CourseInfo createCourse(Integer userId, CourseDTO dto);
+
     /**
      * 根据课程名称模糊查询（不分页）
+     *
      * @param courseName 课程名称关键词
      * @return 匹配的课程列表
      */
@@ -27,9 +29,10 @@ public interface ICourseInfoService extends IService<CourseInfo> {
 
     /**
      * 根据课程名称模糊查询 + 分页
+     *
      * @param courseName 课程名称关键词
-     * @param page 页码
-     * @param size 每页数量
+     * @param page       页码
+     * @param size       每页数量
      * @return 分页结果
      */
     Page<CourseInfo> pageByCourseName(String courseName, long page, long size);
@@ -38,4 +41,11 @@ public interface ICourseInfoService extends IService<CourseInfo> {
      * 多条件组合查询（课程名称 + 状态 + 教师）
      */
     List<CourseInfo> listByCondition(String courseName, String status, Integer teacherId);
+
+
+    /**
+     * 更新已过期的课程状态为 ENDED
+     * ✅ 只扫描 "开放中" 的课程 + 时间索引优化
+     */
+    int updateExpiredToEnded();
 }
