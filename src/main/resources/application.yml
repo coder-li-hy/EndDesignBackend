@@ -1,7 +1,19 @@
 server:
   port: 8080
+  servlet:
+    encoding:
+      enabled: true
+      charset: UTF-8
+      force: true  # ⭐ 强制使用 UTF-8
 
 spring:
+  ai:
+    openai:
+      api-key: sk-06748b75ed944d39add0c5cbdee793c7 # 你申请的apiKey
+      base-url: https://api.deepseek.com
+      chat:
+        options:
+          model: deepseek-v4-flash
   #  shardingsphere:
   #    datasource:
   #      names:

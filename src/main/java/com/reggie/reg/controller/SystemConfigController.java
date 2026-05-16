@@ -143,7 +143,7 @@ public class SystemConfigController {
      */
     private boolean isSystemConfig(String configKey) {
         // 创建一个包含所有系统配置键的列表，并检查给定的配置键是否在该列表中
-        return Arrays.asList("GLOBAL_SELECTION_SWITCH", "SUBMISSION_LOCK", "MAINTENANCE_MODE")
+        return Arrays.asList("GLOBAL_SELECTION_SWITCH", "MAINTENANCE_MODE")
                 .contains(configKey);
     }
 
