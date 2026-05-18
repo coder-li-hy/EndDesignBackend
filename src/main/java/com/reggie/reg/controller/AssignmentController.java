@@ -301,6 +301,7 @@ public class AssignmentController {
                 item.put("isLate", s.getIsLate());
                 item.put("score", s.getScore());
                 item.put("teacherComment", s.getTeacherComment());
+                item.put("lateReason", s.getLateReason());
                 return item;
             }).collect(Collectors.toList());
 

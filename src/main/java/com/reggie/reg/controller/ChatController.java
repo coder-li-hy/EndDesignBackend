@@ -1,6 +1,10 @@
 package com.reggie.reg.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reggie.reg.common.R;
+import com.reggie.reg.dto.LateReasonAnalyzeRequest;
+import com.reggie.reg.dto.LateReasonAnalyzeResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -8,11 +12,14 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * AI 对话接口
@@ -46,6 +53,7 @@ public class ChatController {
             - 不能承诺系统未来会有某某功能
             - 不能替用户执行任何操作（只能指导步骤）
             - 不能泄露其他用户的信息或系统内部逻辑
+            - 聊天时不能使用像”\uD83D\uDC4B“这样的表情符号
                 
             【回答风格】
             - 简洁友好，口语化，单次回复不超过 200 字
@@ -162,5 +170,205 @@ public class ChatController {
         // 立刻返回 emitter，连接保持打开
         // 后续数据会通过上面的 subscribe 回调异步推送
         return emitter;
+    }
+
+
+    // ========== 新增：迟交理由智能分析接口 ==========
+
+    /**
+     * 迟交理由智能分类分析
+     * <p>
+     * POST /api/teacher/assignments/{assignmentId}/late-reasons/analyze
+     *
+     * @param assignmentId 作业 ID
+     * @param request 包含迟交理由列表的请求体
+     * @return 分类统计结果 + AI 分析建议
+     */
+    @PostMapping(value = "/teacher/assignments/{assignmentId}/late-reasons/analyze",
+            produces = MediaType.APPLICATION_JSON_VALUE)
+    public R<LateReasonAnalyzeResponse> analyzeLateReasons(
+            @PathVariable Integer assignmentId,
+            @RequestBody LateReasonAnalyzeRequest request) {
+
+        try {
+            // 1. 参数校验
+            if (request.getReasons() == null || request.getReasons().isEmpty()) {
+                return R.error("请提供迟交理由列表");
+            }
+
+            // 2. 构建 AI 分析 Prompt
+            String analysisPrompt = buildLateReasonAnalysisPrompt(request);
+
+            // 3. 调用大模型进行分析（非流式，等待完整响应）
+            String aiResponse = chatClient.prompt()
+                    .user(analysisPrompt)
+                    .call()
+                    .content();
+
+            // 4. 解析 AI 返回的 JSON 结果
+            LateReasonAnalyzeResponse result = parseAiAnalysisResult(aiResponse);
+
+            // 5. 返回标准响应
+            return R.success(result);
+
+        } catch (Exception e) {
+            log.error("Late reason analysis failed for assignmentId={}", assignmentId, e);
+
+            // 降级方案：返回基础分类（避免接口完全不可用）
+            return R.success(getFallbackAnalysis(request.getReasons()));
+        }
+    }
+
+    /**
+     * 构建迟交理由分析的 Prompt
+     */
+    private String buildLateReasonAnalysisPrompt(LateReasonAnalyzeRequest request) {
+        // 默认分类标签（如果前端未提供）
+        List<String> categories = request.getExpectedCategories();
+        if (categories == null || categories.isEmpty()) {
+            categories = List.of("时间管理", "技术困难", "理解偏差", "个人事务", "其他原因");
+        }
+
+        // 格式化理由列表
+        String reasonsJson = request.getReasons().stream()
+                .map(r -> "  - \"" + r.replace("\"", "\\\"") + "\"")
+                .collect(Collectors.joining("\n"));
+
+        return """
+            【任务】
+            你是一名教学数据分析专家，请对学生提交作业迟交的理由进行智能分类和统计。
+            
+            【分类标签】（请严格使用以下分类，不要新增）
+            %s
+            
+            【待分析的理由列表】（共 %d 条）
+            %s
+            
+            【输出要求】
+            1. 请输出严格的 JSON 格式，不要包含任何额外文字或 Markdown 标记
+            2. JSON 结构如下：
+            {
+              "categories": [
+                {
+                  "name": "分类名称（必须来自上述分类标签）",
+                  "value": 该分类的数量（整数）,
+                  "color": "建议的图表颜色（从 #667eea, #764ba2, #909399, #c0c4cc, #e6a23c 中选择）",
+                  "examples": ["该分类下的 1-2 个典型理由示例"]
+                }
+              ],
+              "summary": "用 1-2 句话总结迟交的主要原因，并给出 1 条教学改进建议"
+            }
+            3. 确保所有分类的 value 之和等于总理由数
+            4. summary 要简洁、实用，避免空话
+            
+            【开始分析】
+            """.formatted(
+                categories.stream().map(c -> "- " + c).collect(Collectors.joining("\n")),
+                request.getReasons().size(),
+                reasonsJson
+        );
+    }
+
+    /**
+     * 解析 AI 返回的 JSON 结果
+     */
+    private LateReasonAnalyzeResponse parseAiAnalysisResult(String aiResponse) {
+        try {
+            // 清理可能的 Markdown 标记
+            String json = aiResponse.trim()
+                    .replaceAll("^```json\\s*", "")
+                    .replaceAll("\\s*```$", "")
+                    .trim();
+
+            // 使用 Jackson 解析（Spring Boot 默认已配置）
+            ObjectMapper mapper = new ObjectMapper();
+
+            // 先解析为中间结构
+            JsonNode root = mapper.readTree(json);
+
+            // 解析 categories
+            List<LateReasonAnalyzeResponse.CategoryStat> categories = new ArrayList<>();
+            if (root.has("categories")) {
+                for (JsonNode cat : root.get("categories")) {
+                    categories.add(new LateReasonAnalyzeResponse.CategoryStat(
+                            cat.get("name").asText(),
+                            cat.get("value").asInt(),
+                            cat.has("color") ? cat.get("color").asText() : "#909399",
+                            cat.has("examples") ?
+                                    mapper.convertValue(cat.get("examples"), List.class) :
+                                    List.of()
+                    ));
+                }
+            }
+
+            // 解析 summary
+            String summary = root.has("summary") ? root.get("summary").asText() : "暂无分析建议";
+
+            return new LateReasonAnalyzeResponse(categories, summary);
+
+        } catch (Exception e) {
+            log.warn("Failed to parse AI response: {}", aiResponse, e);
+            throw new RuntimeException("AI 响应解析失败", e);
+        }
+    }
+
+    /**
+     * 降级方案：当 AI 调用失败时返回基础分类
+     */
+    private LateReasonAnalyzeResponse getFallbackAnalysis(List<String> reasons) {
+        // 简单关键词匹配分类（兜底逻辑）
+        Map<String, Integer> stats = new LinkedHashMap<>();
+        Map<String, List<String>> examples = new LinkedHashMap<>();
+
+        // 预定义分类关键词
+        Map<String, List<String>> keywords = Map.of(
+                "时间管理", List.of("忘记", "迟到", "时间", "截止", "安排", "拖延"),
+                "技术困难", List.of("电脑", "网络", "软件", "系统", "故障", "坏了", "打不开"),
+                "理解偏差", List.of("不懂", "不会", "没看懂", "题目", "要求", "不明白"),
+                "个人事务", List.of("生病", "家里", "有事", "请假", "冲突", "紧急"),
+                "其他原因", List.of()  // 兜底
+        );
+
+        // 统计分类
+        for (String reason : reasons) {
+            String lower = reason.toLowerCase();
+            boolean matched = false;
+
+            for (Map.Entry<String, List<String>> entry : keywords.entrySet()) {
+                if (entry.getValue().stream().anyMatch(kw -> lower.contains(kw))) {
+                    stats.merge(entry.getKey(), 1, Integer::sum);
+                    examples.computeIfAbsent(entry.getKey(), k -> new ArrayList<>()).add(reason);
+                    matched = true;
+                    break;
+                }
+            }
+
+            if (!matched) {
+                stats.merge("其他原因", 1, Integer::sum);
+                examples.computeIfAbsent("其他原因", k -> new ArrayList<>()).add(reason);
+            }
+        }
+
+        // 构建响应
+        List<String> colors = List.of("#667eea", "#764ba2", "#909399", "#c0c4cc", "#e6a23c");
+        List<LateReasonAnalyzeResponse.CategoryStat> categories = new ArrayList<>();
+
+        int colorIdx = 0;
+        for (Map.Entry<String, Integer> entry : stats.entrySet()) {
+            categories.add(new LateReasonAnalyzeResponse.CategoryStat(
+                    entry.getKey(),
+                    entry.getValue(),
+                    colors.get(colorIdx % colors.size()),
+                    examples.getOrDefault(entry.getKey(), List.of()).stream()
+                            .limit(2)
+                            .collect(Collectors.toList())
+            ));
+            colorIdx++;
+        }
+
+        return new LateReasonAnalyzeResponse(
+                categories,
+                "⚠️ 智能分析暂时不可用，已使用基础规则分类。建议检查网络连接或稍后重试。"
+        );
     }
 }

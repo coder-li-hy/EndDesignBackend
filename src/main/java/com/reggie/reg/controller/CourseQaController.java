@@ -119,9 +119,9 @@ public class CourseQaController {
     public R<String> askQuestion(@RequestBody Map<String, Object> params, HttpServletRequest request) {
 
         try {
-            // 1. 参数校验 - 检查必要参数是否存在
-            Integer courseId = (Integer) params.get("courseId");
-            Integer studentId = (Integer) params.get("studentId");
+            // ⭐ 使用安全转换方法
+            Integer courseId = getIntegerParam(params, "courseId");
+            Integer studentId = getIntegerParam(params, "studentId");
             String question = (String) params.get("question");
 
             // 验证参数是否为空或无效 提问.trim()消除了空格
@@ -145,6 +145,8 @@ public class CourseQaController {
             if (selection == null) {
                 return R.error("请先选课");
             }
+            CourseInfo courseInfo=courseInfoService.getById(courseId);
+
 
             // 3. 创建提问记录 - 构建问答对象并设置属性
             CourseQa qa = new CourseQa();
@@ -153,6 +155,7 @@ public class CourseQaController {
             qa.setQuestion(question.trim());
             qa.setIsAnonymous(Boolean.TRUE.equals(params.get("isAnonymous")));
             qa.setAskTime(LocalDateTime.now());
+            qa.setTeacherId(courseInfo.getTeacherId());
 
             // 设置审核状态为待审核
             qa.setAuditStatus("PENDING");
@@ -306,6 +309,35 @@ public class CourseQaController {
             System.err.println("Reply question error: " + e.getMessage());
             return R.error("回复失败");
         }
+    }
+
+    /**
+     * 安全获取 Integer 参数（兼容 String/Number/Integer）
+     */
+    private Integer getIntegerParam(Map<String, Object> params, String key) {
+        Object value = params.get(key);
+        if (value == null) return null;
+
+        // 已经是 Integer，直接返回
+        if (value instanceof Integer) {
+            return (Integer) value;
+        }
+
+        // 是字符串，尝试解析
+        if (value instanceof String) {
+            try {
+                return Integer.parseInt((String) value);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+
+        // 是其他数字类型（如 Long），转成 int
+        if (value instanceof Number) {
+            return ((Number) value).intValue();
+        }
+
+        return null;
     }
 
 

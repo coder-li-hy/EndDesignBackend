@@ -11,6 +11,7 @@ import com.reggie.reg.service.impl.CourseInfoServiceImpl;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +28,7 @@ import java.util.Map;
  */
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class CourseInfoController {
 
     private final ICourseInfoService courseInfoService;
@@ -185,6 +187,36 @@ public class CourseInfoController {
         return R.success("状态更新成功");
     }
 
+    /**
+     * 更新课程状态接口
+     * @param courseId 课程ID路径变量
+     * @param body 包含状态信息的请求体
+     * @param request HTTP请求对象，用于获取session中的教师ID
+     * @return 返回操作结果，成功或失败信息
+     */
+    @PutMapping("/teacher/courses/{courseId}/selection")
+    public R<String> updateCourseSelect(@PathVariable Integer courseId,
+                                        @RequestBody Map<String, String> body,
+                                        HttpServletRequest request) {
+        //
+        String status = body.get("selectionOpen");  // "OPEN" 或 "CLOSED"
+        Boolean selectionOpen = Boolean.parseBoolean(status);
+        log.info("status: {}", status);
+
+        // 获取当前用户id
+        Integer teacherId = (Integer) request.getSession().getAttribute("sys_user");
+        CourseInfo course = courseInfoService.getById(courseId);
+
+        // 权限校验：只能改自己的课
+        if (course == null || !teacherId.equals(course.getTeacherId())) {
+            return R.error("无权操作");
+        }
+        course.setSelectionOpen(selectionOpen);
+
+        // 调用Mybatis—plus进行更新
+        courseInfoService.updateById(course);
+        return R.success("状态更新成功");
+    }
 
     /**
      * 获取课程列表接口
