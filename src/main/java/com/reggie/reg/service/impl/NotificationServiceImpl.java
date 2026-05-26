@@ -56,7 +56,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         List<Map<String, Object>> records = notificationMapper.selectMyNotifications(
                 userId, courseId, type, isRead, (page - 1) * size, size);
 
-        // 🔢 单独查总数（避免 COUNT(*) 在关联查询中性能问题）
+        // 单独查总数（避免 COUNT(*) 在关联查询中性能问题）
         LambdaQueryWrapper<NotificationReceiver> countWrapper = new LambdaQueryWrapper<>();
         countWrapper.eq(NotificationReceiver::getReceiverId, userId);
         if (isRead != null) countWrapper.eq(NotificationReceiver::getIsRead, isRead);

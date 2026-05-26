@@ -41,28 +41,33 @@ public class NotificationController {
     @Autowired
     private INotificationService notificationService;
 
-    // 🔔 获取"我的通知"列表（支持筛选+分页）
+    // 获取"我的通知"列表（支持筛选+分页）
     @GetMapping("/my")
     public R<Map<String, Object>> getMyNotifications(
             @RequestParam(required = false) Integer courseId,
             @RequestParam(required = false) String type,
-            @RequestParam(required = false) Boolean isRead,
+            @RequestParam(required = false) Boolean unreadOnly,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             HttpServletRequest request) {
 
-        // 🔐 从 token/session 获取当前用户（根据你的鉴权方式调整）
+        // 从 token/session 获取当前用户（根据你的鉴权方式调整）
         Integer userId = (Integer) request.getSession().getAttribute("sys_user");
         // 或：Integer userId = UserContext.getCurrentUserId();
 
         if (userId == null) return R.error("用户未登录");
+        Boolean isRead = null;
 
-        Map<String, Object> data = notificationService.getMyNotifications(
-                userId, courseId, type, isRead, page, size);
+        if (unreadOnly != null) {
+            isRead=false;
+        }
+
+            Map<String, Object> data = notificationService.getMyNotifications(
+                    userId, courseId, type, isRead, page, size);
         return R.success(data);
     }
 
-    // 🔢 获取未读数量（用于红点）
+    // 获取未读数量（用于红点）
     @GetMapping("/unread-count")
     public R<Integer> getUnreadCount(HttpServletRequest request) {
         Integer userId = (Integer) request.getAttribute("userId");
@@ -70,7 +75,7 @@ public class NotificationController {
         return R.success(notificationService.getUnreadCount(userId));
     }
 
-    // ✅ 标记单条通知为已读
+    // 标记单条通知为已读
     @PostMapping("/{notifyId}/read")
     public R<String> markAsRead(@PathVariable Integer notifyId, HttpServletRequest request) {
         Integer userId = (Integer) request.getSession().getAttribute("sys_user");
@@ -80,7 +85,7 @@ public class NotificationController {
         return success ? R.success("已标记为已读") : R.error("操作失败");
     }
 
-    // ✅ 批量标记某课程下通知为已读（可选）
+    // 批量标记某课程下通知为已读（可选）
     @PostMapping("/course/{courseId}/read-all")
     public R<String> markCourseAsRead(@PathVariable Integer courseId, HttpServletRequest request) {
         Integer userId = (Integer) request.getSession().getAttribute("sys_user");
@@ -95,7 +100,7 @@ public class NotificationController {
     public R<String> publish(@RequestBody NotificationDTO dto, HttpServletRequest request) {
         // 🔐 权限校验 + 参数校验略...
         // 获取当前登录用户角色
-        if ("TEACHER".equals(request.getSession().getAttribute("sys_user_role"))){
+        if ("TEACHER".equals(request.getSession().getAttribute("sys_user_role"))) {
             dto.setType("COURSE");
             // 如果过当前登录用户为教师
             notificationService.publishNotification(dto.toEntity());
