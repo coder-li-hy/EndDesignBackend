@@ -430,7 +430,8 @@ public class CourseSelectionController {
     private void notifyStudent(Integer studentId, Integer courseId, String message) {
         // 简化：记录到通知表
         Notification notify = new Notification();
-        notify.setReceiverId(studentId);
+        // 改成双表后系统只负责发布通知
+//        notify.setReceiverId(studentId);
         notify.setPublisherId(0);  // 系统通知
         notify.setCourseId(courseId);
         notify.setType("SYSTEM");

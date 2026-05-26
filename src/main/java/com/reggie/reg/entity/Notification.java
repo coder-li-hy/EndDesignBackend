@@ -54,9 +54,4 @@ public class Notification implements Serializable {
 
     private LocalDateTime publishTime;
 
-    /**
-     * 接收者ID 如果为系统通知 则为0 发给所有人
-     */
-    private Integer receiverId;
-
 }
