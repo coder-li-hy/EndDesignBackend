@@ -13,6 +13,7 @@ import java.io.IOException;
 
 /**
  * 设置过滤器，检查用户是否完成了登录
+ * 该过滤器未启用
  *
  */
 //@WebFilter(filterName = "loginCheckFilter", urlPatterns = "/*")

@@ -6,34 +6,45 @@ import com.reggie.reg.common.R;
 import com.reggie.reg.entity.AuditLog;
 import com.reggie.reg.entity.CourseInfo;
 import com.reggie.reg.entity.CourseResource;
+import com.reggie.reg.entity.CourseSelection;
 import com.reggie.reg.service.IAuditLogService;
 import com.reggie.reg.service.ICourseInfoService;
 import com.reggie.reg.service.ICourseResourceService;
+import com.reggie.reg.service.ICourseSelectionService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class CourseResourceController {
 
     private final ICourseResourceService resourceService;
     private final ICourseInfoService courseService;
     private final IAuditLogService auditLogService;
+    private final ICourseSelectionService selectionService;
 
 
     /**
      * 获取教师课程资源列表接口
-     * @param courseId 课程ID（必填）
-     * @param title 资源标题（可选）
-     * @param type 资源类型（可选）
+     *
+     * @param courseId    课程ID（必填）
+     * @param title       资源标题（可选）
+     * @param type        资源类型（可选）
      * @param auditStatus 审核状态（可选）
-     * @param page 当前页码（默认为1）
-     * @param size 每页条数（默认为10）
-     * @param request HTTP请求对象，用于获取session中的用户信息
+     * @param page        当前页码（默认为1）
+     * @param size        每页条数（默认为10）
+     * @param request     HTTP请求对象，用于获取session中的用户信息
      * @return 返回资源分页数据
      */
     @GetMapping("/teacher/resources")
@@ -71,8 +82,9 @@ public class CourseResourceController {
 
     /**
      * 处理教师上传课程资源的请求
+     *
      * @param resource 包含资源信息的课程资源对象
-     * @param request HTTP请求对象，用于获取会话信息
+     * @param request  HTTP请求对象，用于获取会话信息
      * @return 返回操作结果，成功或失败信息
      */
     @PostMapping("/teacher/resources")
@@ -103,9 +115,10 @@ public class CourseResourceController {
 
     /**
      * 更新课程资源的接口方法
+     *
      * @param resourceId 资源ID，路径变量
-     * @param dto 包含更新后资源信息的DTO对象
-     * @param request HTTP请求对象，用于获取session中的用户信息
+     * @param dto        包含更新后资源信息的DTO对象
+     * @param request    HTTP请求对象，用于获取session中的用户信息
      * @return 返回操作结果，成功或失败信息
      */
     @PutMapping("/teacher/resources/{resourceId}")
@@ -144,8 +157,9 @@ public class CourseResourceController {
 
     /**
      * 删除教师资源的接口方法
+     *
      * @param resourceId 要删除的资源ID，通过路径变量传递
-     * @param request HTTP请求对象，用于获取会话中的教师ID
+     * @param request    HTTP请求对象，用于获取会话中的教师ID
      * @return 返回操作结果，包含成功或失败信息
      */
     @DeleteMapping("/teacher/resources/{resourceId}")
@@ -178,8 +192,9 @@ public class CourseResourceController {
 
     /**
      * 处理教师重新提交资源审核的请求
+     *
      * @param resourceId 资源ID，用于标识需要重新提交的资源
-     * @param request HTTP请求对象，用于获取请求相关信息
+     * @param request    HTTP请求对象，用于获取请求相关信息
      * @return 返回操作结果，成功或失败信息
      */
     @PutMapping("/teacher/resources/{resourceId}/resubmit")
@@ -210,6 +225,7 @@ public class CourseResourceController {
 
     /**
      * 为资源创建审核日志
+     *
      * @param resourceId 资源ID
      * @param uploaderId 上传者ID
      */
@@ -232,6 +248,7 @@ public class CourseResourceController {
      * 更新指定资源的审计日志
      * 该方法会查找最新的资源审计记录，并将其状态重置为"待处理"
      * 如果没有找到审计记录，则会创建一条新的审计记录
+     *
      * @param resourceId 要更新的资源ID
      */
     private void updateAuditLogForResource(Integer resourceId) {
@@ -259,6 +276,91 @@ public class CourseResourceController {
         } else {
             // 如果不存在审计记录，则创建一条新的审计记录
             createAuditLogForResource(resourceId, null);
+        }
+    }
+
+
+    /**
+     * 获取学生已选课程的资源列表
+     * GET /student/courses/{courseId}/resources?type=&title=
+     */
+    @GetMapping("/student/courses/{courseId}/resources")
+    public R<List<Map<String, Object>>> getCourseResources(
+            @PathVariable Integer courseId,
+            @RequestParam(required = false) String type,      // 资源类型筛选：PPT/VIDEO/LINK/FILE
+            @RequestParam(required = false) String title,     // 资源标题模糊搜索
+            @RequestParam Integer studentId,
+            HttpServletRequest request) {
+
+        try {
+            // 1. 权限校验：学生只能查自己选的课程
+            Integer currentUserId = (Integer) request.getSession().getAttribute("sys_user");
+            if (currentUserId == null || !currentUserId.equals(studentId)) {
+                return R.error("无权访问");
+            }
+
+            // 校验课程是否已选
+            CourseSelection selection = selectionService.getOne(
+                    new LambdaQueryWrapper<CourseSelection>()
+                            .eq(CourseSelection::getCourseId, courseId)
+                            .eq(CourseSelection::getStudentId, studentId)
+                            .eq(CourseSelection::getStatus, "SELECTED")
+            );
+            if (selection == null) {
+                return R.error("当前课程未被选中");
+            }
+
+            // 2. 构建查询条件
+            LambdaQueryWrapper<CourseResource> query = new LambdaQueryWrapper<>();
+            query.eq(CourseResource::getCourseId, courseId);
+            query.eq(CourseResource::getAuditStatus, "PASS");  // 只展示审核通过的资源
+
+            if (StringUtils.isNotBlank(type)) {
+                query.eq(CourseResource::getType, type);
+            }
+            if (StringUtils.isNotBlank(title)) {
+                query.like(CourseResource::getTitle, title);
+            }
+            query.orderByDesc(CourseResource::getCreateTime);
+
+            // 3. 查询资源列表
+            List<CourseResource> resources = resourceService.list(query);
+            if (resources.isEmpty()) {
+                return R.success(new ArrayList<>());
+            }
+
+            // 4. 预加载教师姓名（资源上传者）
+            List<Integer> uploaderIds = resources.stream()
+                    .map(CourseResource::getUploaderId)
+                    .distinct().collect(Collectors.toList());
+
+            Map<Integer, String> teacherMap = new HashMap<>();
+            if (!uploaderIds.isEmpty()) {
+                // 假设通过 userService 查询教师信息，此处简化处理
+                // 实际项目中需注入 ISysUserService
+                // teacherMap = userService.listByIds(uploaderIds).stream()
+                //     .collect(Collectors.toMap(SysUser::getUserId, SysUser::getUsername));
+            }
+
+            // 5. 组装结果（保持前端格式兼容）
+            List<Map<String, Object>> resultList = resources.stream().map(r -> {
+                Map<String, Object> item = new HashMap<>();
+                item.put("resourceId", r.getResourceId());
+                item.put("title", r.getTitle());
+                item.put("type", r.getType());  // PPT/VIDEO/LINK/FILE
+                item.put("fileUrl", r.getFileUrl());
+                item.put("oriName", r.getOriName());  // 原始文件名，前端展示用
+                item.put("createTime", r.getCreateTime());
+                // 简化：直接显示"教师"，实际可关联查询教师姓名
+                item.put("uploaderName", teacherMap.getOrDefault(r.getUploaderId(), "教师"));
+                return item;
+            }).collect(Collectors.toList());
+
+            return R.success(resultList);
+
+        } catch (Exception e) {
+            log.error("Get course resources error", e);
+            return R.success(new ArrayList<>());  // 容错返回空列表
         }
     }
 }
