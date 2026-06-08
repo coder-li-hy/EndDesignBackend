@@ -29,9 +29,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * <p>
  * 作业表 前端控制器 作业在设计中不受内容审核管控
- * </p>
  *
  * @author lihy
  * @since 2026-04-08
@@ -50,7 +48,7 @@ public class AssignmentController {
      */
     @GetMapping("/teacher/assignments")
     public R<Page<Assignment>> listAssignments(
-            @RequestParam Integer courseId,  // ⭐ 必须传课程 ID
+            @RequestParam Integer courseId,  // 必须传课程 ID
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String deadline,
             @RequestParam(defaultValue = "1") Integer page,
@@ -65,7 +63,7 @@ public class AssignmentController {
         if (!"TEACHER".equals(role)) {
             return R.error("无权查看");
         }
-        // TODO: 校验 courseId 是否属于该教师
+        // 校验 courseId 是否属于该教师
         CourseInfo course = courseInfoService.getById(courseId);
         if (course == null) {
             return R.error("课程不存在");
@@ -100,11 +98,8 @@ public class AssignmentController {
             return R.error("课程不存在");
         }
         if (!teacherId.equals(course.getTeacherId())) {
-            // ⚠️ 安全提示：不要返回"课程不属于您"，避免枚举课程 ID
             return R.error("无权访问该课程");
         }
-
-
         assignmentService.save(assignment);
         return R.success("作业发布成功");
     }
@@ -119,7 +114,7 @@ public class AssignmentController {
                                       HttpServletRequest request) {
         // 权限校验 + 业务逻辑...
         Integer teacherId = (Integer) request.getSession().getAttribute("sys_user");
-        Assignment assignment=assignmentService.getById(assignmentId);
+        Assignment assignment = assignmentService.getById(assignmentId);
 
         // 校验：作业所属课程的教师必须是当前用户
         // TODO: 根据 courseId 查询课程，验证 teacherId
@@ -128,7 +123,6 @@ public class AssignmentController {
             return R.error("课程不存在");
         }
         if (!teacherId.equals(course.getTeacherId())) {
-            // ⚠️ 安全提示：不要返回"课程不属于您"，避免枚举课程 ID
             return R.error("无权访问该课程");
         }
         assignmentService.updateById(dto);
@@ -137,10 +131,10 @@ public class AssignmentController {
 
     /**
      * 4. 删除作业
-     * DELETE /api/teacher/assignments/{assignmentId}
+     * DELETE /teacher/assignments/{assignmentId}
      */
     @DeleteMapping("/teacher/assignments/{assignmentId}")
-    public R<String> deleteAssignment(@PathVariable Integer assignmentId,HttpServletRequest request) {
+    public R<String> deleteAssignment(@PathVariable Integer assignmentId, HttpServletRequest request) {
         Integer teacherId = (Integer) request.getSession().getAttribute("sys_user");
 
         Assignment assignment = assignmentService.getById(assignmentId);
@@ -152,7 +146,7 @@ public class AssignmentController {
             return R.error("无权删除该作业");
         }
 
-        // 可选：先检查是否有学生提交，避免误删
+        // 先检查是否有学生提交，避免误删
         long submitCount = submissionService.count(
                 new LambdaQueryWrapper<Submission>().eq(Submission::getAssignmentId, assignmentId)
         );
@@ -169,18 +163,15 @@ public class AssignmentController {
      * GET /teacher/assignments/{assignmentId}/submissions
      */
     @GetMapping("/teacher/assignments/{assignmentId}/submissions")
-    public R<List<SubmissionVO>> getSubmissions(@PathVariable Integer assignmentId,HttpServletRequest request) {
+    public R<List<SubmissionVO>> getSubmissions(@PathVariable Integer assignmentId, HttpServletRequest request) {
         Integer teacherId = (Integer) request.getSession().getAttribute("sys_user");
-
         // 校验作业归属
         Assignment assignment = assignmentService.getById(assignmentId);
         if (assignment == null) return R.error("作业不存在");
-
         CourseInfo course = courseInfoService.getById(assignment.getCourseId());
         if (course == null || !teacherId.equals(course.getTeacherId())) {
             return R.error("无权查看该作业的提交");
         }
-
         // 查询提交记录 + 关联学生姓名
         List<Submission> submissions = submissionService.list(
                 new LambdaQueryWrapper<Submission>()
@@ -241,7 +232,7 @@ public class AssignmentController {
                 return R.error("未登录");
             }
 
-            // 2. 查作业信息（校验归属 + 获取 courseId）
+            // 2. 查作业信息
             Assignment assignment = assignmentService.getById(assignmentId);
             if (assignment == null) {
                 return R.error("作业不存在");
@@ -258,8 +249,8 @@ public class AssignmentController {
             // 3. 查课程信息（获取选课人数 = 应交份数）
             int total = course.getCurrentCount() != null ? course.getCurrentCount() : 0;
 
-            if (total>=course.getMaxCapacity()){
-                total= course.getMaxCapacity();
+            if (total >= course.getMaxCapacity()) {
+                total = course.getMaxCapacity();
             }
 
             // 4. 查该作业的提交记录

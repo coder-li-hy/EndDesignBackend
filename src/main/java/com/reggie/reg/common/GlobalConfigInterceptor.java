@@ -29,7 +29,7 @@ public class GlobalConfigInterceptor implements HandlerInterceptor {
         wrapper.eq(SystemConfig::getConfigKey,"GLOBAL_SELECTION_SWITCH");
         String global_selection_switch=configService.getOne(wrapper).getConfigValue();
 
-        // ⭐ 系统维护模式校验（管理员除外）
+        // 系统维护模式校验（管理员除外 其余用户全部拦截）
         if ("1".equals(maintenance_mode)) {
             Integer userId = (Integer) request.getSession().getAttribute("sys_user");
             String role = (String) request.getSession().getAttribute("sys_user_role");

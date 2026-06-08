@@ -461,7 +461,7 @@ public class SysUserController {
         writer.println("用户名,密码,角色,邮箱,手机号,状态");
         writer.println("teacher_test,123456,TEACHER,teacher@test.edu,13800138000,ACTIVE");
         writer.println("student_test,,STUDENT,student@test.edu,13900139000,");
-        writer.println(",,,备注：密码和状态可选，空则使用默认值,,");
+        writer.println("/n/n,,,备注：密码和状态可选，空则使用默认值,,");
 
         writer.flush();
         writer.close();
@@ -625,7 +625,6 @@ public class SysUserController {
         if (!"ADMIN".equals(role)) {
             return R.error("无权访问");
         }
-
         return null;  // 校验通过
     }
 

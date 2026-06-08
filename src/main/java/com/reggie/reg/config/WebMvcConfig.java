@@ -24,7 +24,7 @@ import java.util.List;
 @Configuration
 @RequiredArgsConstructor
 public class WebMvcConfig extends WebMvcConfigurationSupport {
-    // ⭐ 新增：读取上传路径配置（添加默认值 + 兼容 Windows 路径）
+    // 读取上传路径配置（添加默认值 + 兼容 Windows 路径）
     @Value("${reggie.path:E:/EndDesign/backend3/src/main/resources/file/upload/}")
     private String uploadPath;
 
@@ -32,24 +32,15 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
     /**
      * 进行静态资源映射
      * 重写类中的方法，使放在resources中的静态资源能够被访问到
-     *
      * @param registry
      */
     @Override
     protected void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // ⭐ 映射 /uploads/** 到本地文件目录
         // 前端访问: http://your-domain/upload/abc123.pptx
         // 实际读取: E:/EndDesign/backend3/src/main/resources/file/abc123.pptx
         log.info("配置文件上传路径: {}", uploadPath);
         registry.addResourceHandler("/upload/**")
                 .addResourceLocations("file:" + uploadPath);
-
-        //将前段的请求映射到后端页面的静态资源中
-//        log.info("开始静态资源映射！");
-//        registry.addResourceHandler("/backend/**").addResourceLocations("classpath:/backend/");
-//        registry.addResourceHandler("/front/**").addResourceLocations("classpath:/front/");
-//        log.info("静态资源映射成功！");
-//
     }
 
     //注入请求拦截器
@@ -64,8 +55,10 @@ public class WebMvcConfig extends WebMvcConfigurationSupport {
      */
     @Override
     protected void addInterceptors(InterceptorRegistry registry) {
-        // TODO：注册拦截器
-        registry.addInterceptor(globalConfigInterceptor).addPathPatterns("/**").excludePathPatterns("/auth/**","common/upload","admin/config");
+        // 除了用户登录接口和用户登出接口 以及通知相关接口 都进行拦截
+        registry.addInterceptor(globalConfigInterceptor).addPathPatterns("/**").excludePathPatterns("/auth/login","/auth/logout","/notifications/**");
+        // 除了用户登录接口 都进行拦截
+        registry.addInterceptor(loginCheckInterceptor).addPathPatterns("/**").excludePathPatterns("/auth/login");
 
 
     }

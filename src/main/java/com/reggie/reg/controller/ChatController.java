@@ -152,7 +152,7 @@ public class ChatController {
                         token -> {
                             try {
                                 log.info("收到 token: {}", token);
-                                // ✅ 正确写法：明确指定纯文本，避免被序列化成 "xxx"
+                                // 正确写法：明确指定纯文本，避免被序列化成 "xxx"
                                 emitter.send(
                                         token
                                 );
@@ -172,8 +172,6 @@ public class ChatController {
         return emitter;
     }
 
-
-    // ========== 新增：迟交理由智能分析接口 ==========
 
     /**
      * 迟交理由智能分类分析
@@ -282,7 +280,6 @@ public class ChatController {
 
             // 使用 Jackson 解析（Spring Boot 默认已配置）
             ObjectMapper mapper = new ObjectMapper();
-
             // 先解析为中间结构
             JsonNode root = mapper.readTree(json);
 
