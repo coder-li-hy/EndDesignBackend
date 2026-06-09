@@ -95,7 +95,7 @@ public class NotificationController {
         return R.success("批量标记成功");
     }
 
-    // 📤 发布通知（仅管理员/教师可用，需加权限注解）
+    // 发布通知（仅管理员/教师可用，需加权限注解）
     @PostMapping
     public R<String> publish(@RequestBody NotificationDTO dto, HttpServletRequest request) {
         // 🔐 权限校验 + 参数校验略...

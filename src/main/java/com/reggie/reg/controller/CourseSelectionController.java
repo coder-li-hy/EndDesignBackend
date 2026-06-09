@@ -14,6 +14,7 @@ import com.reggie.reg.service.INotificationService;
 import com.reggie.reg.service.ISysUserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 public class CourseSelectionController {
     private final ICourseSelectionService selectionService;
     private final ICourseInfoService courseService;
@@ -105,9 +107,21 @@ public class CourseSelectionController {
                 item.put("selectTime", sel.getSelectTime());
                 // 排队位置（简化：按选课时间排序，实际可计算）
                 if ("QUEUED".equals(status)) {
-                    item.put("queuePosition", selections.indexOf(sel) + 1);
+                    // 查询当前课程的选课人数
+                    LambdaQueryWrapper<CourseSelection> queueQuery = new LambdaQueryWrapper<>();
+//                    queueQuery.eq(CourseSelection::getStudentId, studentId);
+                    queueQuery.eq(CourseSelection::getStatus, status);  // SELECTED 或 QUEUED
+                    queueQuery.eq(CourseSelection::getCourseId, course.getCourseId());
+                    queueQuery.orderByAsc(CourseSelection::getSelectTime);
+                    List<CourseSelection> queueList = selectionService.list(queueQuery);
+                    for (CourseSelection queue : queueList) {
+                        // 若队列中找到对应学生id
+                        if (queue.getStudentId().equals(studentId))
+                            // 将其位置加入返回结果
+                            item.put("queuePosition", queueList.indexOf(queue) + 1);
+                    }
                 }
-
+                log.info("{}",selections.indexOf(sel));
                 resultList.add(item);
             }
 

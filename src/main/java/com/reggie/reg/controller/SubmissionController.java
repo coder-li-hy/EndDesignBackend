@@ -208,7 +208,7 @@ public class SubmissionController {
                 submission.setLateReason((String) params.get("lateReason"));
             }
 
-            // ⭐ 审核状态：提交后进入待审核
+            // 审核状态：提交后进入待审核
             submission.setAuditStatus("PENDING");
             submissionService.save(submission);
              // TODO:向AuditLog中添加记录

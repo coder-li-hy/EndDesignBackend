@@ -87,7 +87,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean publishNotification(Notification notification) {
-        // 1️⃣ 插入通知主表
+        // 1 插入通知主表
         notification.setPublishTime(LocalDateTime.now());
         this.save(notification);
 
@@ -98,7 +98,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         List<Integer> receiverIds = courseSelections.stream().
                 map(CourseSelection::getStudentId).toList();
 
-        // 2️⃣ 批量插入接收记录
+        // 2 批量插入接收记录
         if (receiverIds != null && !receiverIds.isEmpty()) {
             List<NotificationReceiver> receivers = receiverIds.stream()
                     .map(uid -> new NotificationReceiver()
@@ -121,7 +121,7 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         List<Integer> receiverIds = sysUserService.list().stream().
                 map(SysUser::getUserId).toList();
 
-        // 2️⃣ 批量插入接收记录
+        // 2 批量插入接收记录
         if (receiverIds != null && !receiverIds.isEmpty()) {
             List<NotificationReceiver> receivers = receiverIds.stream()
                     .map(uid -> new NotificationReceiver()

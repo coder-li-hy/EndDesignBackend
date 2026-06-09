@@ -18,13 +18,14 @@ import java.util.Map;
 public interface INotificationService extends IService<Notification> {
 //    public R<String> sendSystemNotification(Notification notification, Integer adminId);
 
-    // 📋 获取我的通知列表（分页 + 筛选）
+    // 获取我的通知列表（分页 + 筛选）
     Map<String, Object> getMyNotifications(Integer userId, Integer courseId, String type, Boolean isRead, Integer page, Integer size);
 
-    // 🔔 获取未读数量
+
+    // 获取未读数量
     Integer getUnreadCount(Integer userId);
 
-    // ✅ 标记通知为已读
+    // 标记通知为已读
     boolean markAsRead(Integer userId, Integer notifyId);
 
     //  教师发布课程通知
