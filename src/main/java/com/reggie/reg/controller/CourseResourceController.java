@@ -147,7 +147,11 @@ public class CourseResourceController {
             resource.setOriName(dto.getOriName());
         }
 
-        // 注意：不更新 auditStatus，审核状态由管理员控制
+        // 注意：教师更新资源后 进行重新审核 审核状态要重新设置为PENDING
+        resource.setAuditStatus("PENDING");
+        // 更新审核日志中的相关审核记录的状态信息
+        updateAuditLogForResource(resourceId);
+
 
         // 执行更新操作
         resourceService.updateById(resource);
