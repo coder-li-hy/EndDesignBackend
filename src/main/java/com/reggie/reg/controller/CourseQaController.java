@@ -119,7 +119,7 @@ public class CourseQaController {
     public R<String> askQuestion(@RequestBody Map<String, Object> params, HttpServletRequest request) {
 
         try {
-            // ⭐ 使用安全转换方法
+            // 使用安全转换方法
             Integer courseId = getIntegerParam(params, "courseId");
             Integer studentId = getIntegerParam(params, "studentId");
             String question = (String) params.get("question");

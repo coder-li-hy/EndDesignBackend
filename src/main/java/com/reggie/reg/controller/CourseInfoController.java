@@ -252,7 +252,7 @@ public class CourseInfoController {
 
 /**
  * 根据条件搜索课程信息
- * @GetMapping("/course/search") 表示这是一个GET请求，映射到"/course/search"路径
+ * GET请求，映射到"/course/search"路径
  * @param courseName 课程名称，可选参数
  * @param status 课程状态，可选参数
  * @param teacherId 教师ID，可选参数

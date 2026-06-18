@@ -43,7 +43,7 @@ public class AssignmentController {
     private final ISysUserService sysUserService;
 
     /**
-     * 1. 获取教师作业列表（按课程过滤）
+     * 获取教师作业列表（按课程过滤）
      * GET /teacher/assignments?courseId=1&title=&page=1&size=10
      */
     @GetMapping("/teacher/assignments")
@@ -84,7 +84,7 @@ public class AssignmentController {
     }
 
     /**
-     * 2. 发布作业
+     * 发布作业
      * POST /teacher/assignments
      */
     @PostMapping("/teacher/assignments")
@@ -105,7 +105,7 @@ public class AssignmentController {
     }
 
     /**
-     * 3. 更新作业
+     * 更新作业
      * PUT /teacher/assignments/{assignmentId}
      */
     @PutMapping("/teacher/assignments/{assignmentId}")
@@ -130,7 +130,7 @@ public class AssignmentController {
     }
 
     /**
-     * 4. 删除作业
+     * 删除作业
      * DELETE /teacher/assignments/{assignmentId}
      */
     @DeleteMapping("/teacher/assignments/{assignmentId}")
@@ -159,7 +159,7 @@ public class AssignmentController {
     }
 
     /**
-     * 5. 查看某作业的提交列表
+     * 查看某作业的提交列表
      * GET /teacher/assignments/{assignmentId}/submissions
      */
     @GetMapping("/teacher/assignments/{assignmentId}/submissions")
@@ -193,7 +193,7 @@ public class AssignmentController {
     }
 
     /**
-     * 6. 批改作业（打分 + 评语）
+     * 批改作业（打分 + 评语）
      * PUT /teacher/submissions/{submissionId}/grade
      */
     @PutMapping("/teacher/submissions/{submissionId}/grade")

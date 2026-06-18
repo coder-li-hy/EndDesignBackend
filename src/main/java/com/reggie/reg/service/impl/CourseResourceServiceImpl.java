@@ -38,7 +38,7 @@ public class CourseResourceServiceImpl extends ServiceImpl<CourseResourceMapper,
     @Override
     public boolean saveResource(CourseResource resource) {
         // 1. 设置初始状态 - 初始化资源的审核状态和创建时间
-        resource.setAuditStatus("PENDING");  // ⭐ 业务表状态：设置为待审核状态
+        resource.setAuditStatus("PENDING");  // 业务表状态：设置为待审核状态
         resource.setCreateTime(LocalDateTime.now()); // 设置资源创建时间为当前时间
 
         // 2. 保存资源 - 将资源信息持久化到数据库
@@ -47,7 +47,7 @@ public class CourseResourceServiceImpl extends ServiceImpl<CourseResourceMapper,
             return false; // 保存失败则返回false
         }
 
-        // 3. ⭐ 自动创建审核记录 - 资源保存成功后，自动创建一条审核记录
+        // 3. 自动创建审核记录 - 资源保存成功后，自动创建一条审核记录
         createAuditLog("RESOURCE", resource.getResourceId(), resource.getUploaderId());
 
         return true; // 资源保存成功并创建审核记录后返回true

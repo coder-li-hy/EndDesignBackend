@@ -42,7 +42,7 @@ public class CourseQaServiceImpl extends ServiceImpl<CourseQaMapper, CourseQa> i
         boolean saved = this.save(qa);  // 调用保存方法，保存问答信息
         if (!saved) return false;  // 如果保存失败，直接返回false
 
-        // 3. ⭐ 创建审核记录
+        // 3. 创建审核记录
         createAuditLog("QA", qa.getQaId(), qa.getStudentId());  // 创建审核日志记录，记录类型为"QA"，问答ID和学生ID
 
         return true;  // 返回true表示提交成功

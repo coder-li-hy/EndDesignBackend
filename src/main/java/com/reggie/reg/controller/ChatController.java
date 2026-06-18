@@ -62,7 +62,7 @@ public class ChatController {
             - 遇到不确定的问题，诚实说"这个我暂时不清楚"，并提供人工客服联系方式
                 
             【人工客服】
-            如遇系统问题，请联系：邮件 admin@school.edu
+            如遇系统问题，请联系：邮件 1778362942@qq.com 
             """;
 
 
@@ -83,7 +83,6 @@ public class ChatController {
 
     /**
      * 构造方法：初始化 ChatClient
-     * <p>
      * Spring Boot 启动时会自动把 ChatClient.Builder 注入进来
      * Builder 会读取 application.yml 里配置的 api-key、model 等参数
      */
@@ -112,7 +111,6 @@ public class ChatController {
 
     /**
      * 流式对话接口
-     * <p>
      * 请求示例：GET /api/chat/stream?message=你好&sessionId=abc123
      *
      * @param message   用户发送的消息内容
@@ -175,7 +173,6 @@ public class ChatController {
 
     /**
      * 迟交理由智能分类分析
-     * <p>
      * POST /api/teacher/assignments/{assignmentId}/late-reasons/analyze
      *
      * @param assignmentId 作业 ID
@@ -313,7 +310,7 @@ public class ChatController {
      * 降级方案：当 AI 调用失败时返回基础分类
      */
     private LateReasonAnalyzeResponse getFallbackAnalysis(List<String> reasons) {
-        // 简单关键词匹配分类（兜底逻辑）
+        // 简单关键词匹配分类
         Map<String, Integer> stats = new LinkedHashMap<>();
         Map<String, List<String>> examples = new LinkedHashMap<>();
 

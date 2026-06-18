@@ -98,7 +98,6 @@ public class NotificationController {
     // 发布通知（仅管理员/教师可用，需加权限注解）
     @PostMapping
     public R<String> publish(@RequestBody NotificationDTO dto, HttpServletRequest request) {
-        // 🔐 权限校验 + 参数校验略...
         // 获取当前登录用户角色
         if ("TEACHER".equals(request.getSession().getAttribute("sys_user_role"))) {
             dto.setType("COURSE");

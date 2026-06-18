@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.reggie.reg.mapper.NotificationMapper">
 
-    <!-- 🎯 查询我的通知列表（双表关联 + 动态条件） -->
+    <!-- 查询我的通知列表（双表关联 + 动态条件） -->
     <select id="selectMyNotifications" resultType="java.util.Map">
         SELECT
         n.notify_id, n.title, n.content, n.type, n.course_id,
@@ -29,21 +29,21 @@
         LIMIT #{offset}, #{pageSize}
     </select>
 
-    <!-- 🔢 统计未读数量 -->
+    <!-- 统计未读数量 -->
     <select id="countUnread" resultType="java.lang.Integer">
         SELECT COUNT(1)
         FROM notification_receiver
         WHERE receiver_id = #{userId} AND is_read = 0
     </select>
 
-    <!-- ✅ 标记已读（单条） -->
+    <!-- 标记已读（单条） -->
     <update id="markAsRead">
         UPDATE notification_receiver
         SET is_read = 1, read_time = NOW()
         WHERE receiver_id = #{userId} AND notification_id = #{notifyId}
     </update>
 
-    <!-- ✅ 标记课程下全部已读 -->
+    <!-- 标记课程下全部已读 -->
     <update id="markCourseAsRead">
         UPDATE notification_receiver nr
             INNER JOIN notification n ON nr.notification_id = n.notify_id

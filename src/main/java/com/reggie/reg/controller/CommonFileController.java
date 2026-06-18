@@ -64,7 +64,7 @@ public class CommonFileController {
 
             // 4. 返回结果
             Map<String, String> result = new HashMap<>();
-            result.put("filePath", "/upload/" + uuidFileName);  // 访问路径（相对路径，依赖 Nginx 映射）
+            result.put("filePath", "/upload/" + uuidFileName);  // 访问路径
             result.put("oriName", originalName);                  // 原始文件名（用于前端显示）
 
             log.info("文件上传成功: originalName={}, uuidFileName={}", originalName, uuidFileName);

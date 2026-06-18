@@ -108,7 +108,7 @@ public class CourseInfoServiceImpl extends ServiceImpl<CourseInfoMapper, CourseI
 
     /**
      * 更新已过期的课程状态为 ENDED
-     * ✅ 只扫描 "开放中" 的课程 + 时间索引优化
+     * 只扫描 "开放中" 的课程 + 时间索引优化
      */
     @Transactional(rollbackFor = Exception.class)
     public int updateExpiredToEnded() {

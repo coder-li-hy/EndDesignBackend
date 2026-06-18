@@ -4,7 +4,7 @@ server:
     encoding:
       enabled: true
       charset: UTF-8
-      force: true  # ⭐ 强制使用 UTF-8
+      force: true  # 强制使用 UTF-8
 
 spring:
   ai:

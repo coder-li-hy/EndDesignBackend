@@ -4,14 +4,8 @@ package com.reggie.reg.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.reggie.reg.common.R;
-import com.reggie.reg.entity.CourseInfo;
-import com.reggie.reg.entity.CourseSelection;
-import com.reggie.reg.entity.Notification;
-import com.reggie.reg.entity.SysUser;
-import com.reggie.reg.service.ICourseInfoService;
-import com.reggie.reg.service.ICourseSelectionService;
-import com.reggie.reg.service.INotificationService;
-import com.reggie.reg.service.ISysUserService;
+import com.reggie.reg.entity.*;
+import com.reggie.reg.service.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +35,7 @@ public class CourseSelectionController {
     private final ICourseInfoService courseService;
     private final ISysUserService userService;
     private final INotificationService notificationService;
+    private final INotificationReceiverService notificationReceiverService;
 
 
     /**
@@ -233,11 +228,11 @@ public class CourseSelectionController {
                 return R.success(buildEmptyResult());
             }
 
-            // 4. 预加载关联数据：优化查询性能，预加载关联数据
+            // 4. 优化查询性能，预加载关联数据
             List<Integer> courseIds = coursePage.getRecords().stream()
                     .map(CourseInfo::getCourseId).collect(Collectors.toList());
 
-            // 4.1 查教师姓名
+            // 4.1 查教师相应的用户编号和姓名
             List<Integer> teacherIds = coursePage.getRecords().stream()
                     .map(CourseInfo::getTeacherId).distinct().collect(Collectors.toList());
             Map<Integer, String> teacherNameMap = userService.listByIds(teacherIds)
@@ -429,7 +424,7 @@ public class CourseSelectionController {
             courseService.updateById(course);
         }
 
-        // 5. （可选）发送通知给递补成功的学生
+        // 5. 发送通知给递补成功的学生
         // 向成功递补选课的学生发送通知，告知其选课成功
          notifyStudent(nextStudent.getStudentId(), courseId, "恭喜！您已成功选上课程");
     }
@@ -444,14 +439,22 @@ public class CourseSelectionController {
     private void notifyStudent(Integer studentId, Integer courseId, String message) {
         // 简化：记录到通知表
         Notification notify = new Notification();
+        NotificationReceiver receiver= new NotificationReceiver();
         // 改成双表后系统只负责发布通知
 //        notify.setReceiverId(studentId);
         notify.setPublisherId(0);  // 系统通知
-        notify.setCourseId(courseId);
+        notify.setCourseId(null); //系统通知无需设置课程
         notify.setType("SYSTEM");
         notify.setTitle("选课递补通知");
         notify.setContent(message);
         notify.setPublishTime(LocalDateTime.now());
+
+        // 向主表中插入信息
         notificationService.save(notify);
+        // 构造接受表信息
+        receiver.setNotificationId(notify.getNotifyId());
+        receiver.setReceiverId(studentId);
+        receiver.setIsRead(false);
+        notificationReceiverService.save(receiver);
     }
 }

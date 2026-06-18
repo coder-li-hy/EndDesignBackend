@@ -13,7 +13,7 @@ import java.util.Map;
 public interface NotificationMapper extends BaseMapper<Notification> {
 
     @Transactional
-    // 🎯 核心：查询"我的通知"列表（含已读状态）
+    //  核心：查询"我的通知"列表（含已读状态）
     List<Map<String, Object>> selectMyNotifications(
             @Param("userId") Integer userId,
             @Param("courseId") Integer courseId,  // 可选：按课程筛选
@@ -24,14 +24,14 @@ public interface NotificationMapper extends BaseMapper<Notification> {
     );
 
     @Transactional
-    // 🔢 统计未读数量（用于红点）
+    //  统计未读数量（用于红点）
     Integer countUnread(@Param("userId") Integer userId);
 
     @Transactional
-    // ✅ 标记单条通知为已读
+    //  标记单条通知为已读
     int markAsRead(@Param("userId") Integer userId, @Param("notifyId") Integer notifyId);
 
     @Transactional
-    // ✅ 标记某课程下所有通知为已读（批量）
+    //  标记某课程下所有通知为已读（批量）
     int markCourseAsRead(@Param("userId") Integer userId, @Param("courseId") Integer courseId);
 }

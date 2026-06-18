@@ -596,7 +596,7 @@ public class AuditLogController {
         }
     }
 
-    // ========== 文本转换工具 ==========
+    //  文本转换工具
 
     private String getTargetTypeText(String type) {
         return switch (type) {
